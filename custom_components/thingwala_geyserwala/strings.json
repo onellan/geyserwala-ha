@@ -37,7 +37,7 @@
     "step": {
       "init": {
         "title": "Integration Settings & Features",
-        "description": "Configure polling interval and enable/disable features. Feature configurations can be customized in the next step.",
+        "description": "Configure polling interval and enable/disable features. All advanced feature settings are available in the next step and are preserved even when features are disabled.",
         "data": {
           "update_interval": "Update interval (seconds) - How often to poll the device (min: 5, max: 600)",
           "enable_services": "Enable Custom Services - Control boost, mode, error codes via custom Home Assistant services",
@@ -47,13 +47,13 @@
         }
       },
       "features": {
-        "title": "Configure Enabled Features",
-        "description": "Set up configuration for the features you enabled. Disabled features are not shown here. Your settings are saved even when features are disabled.",
+        "title": "Advanced Feature Settings",
+        "description": "Configure transport, calibration, and alert settings. All fields are shown for easier management, and values are preserved for later use when features are re-enabled.",
         "data": {
-          "transport": "Transport Protocol - HTTP or MQTT",
-          "mqtt_base_topic": "MQTT Base Topic - Root topic for device communication (default: geyserwala)",
-          "calibrations_json": "Sensor Calibrations - JSON with per-entity calibration settings",
-          "alert_rules_json": "Alert Rules - JSON array of alert rule definitions"
+          "transport": "Transport Protocol - Runtime protocol used when MQTT transport is enabled",
+          "mqtt_base_topic": "MQTT Base Topic - Root topic used when MQTT transport is enabled (default: geyserwala)",
+          "calibrations_json": "Sensor Calibrations (JSON) - Applied when Sensor Calibration is enabled",
+          "alert_rules_json": "Alert Rules (JSON) - Applied when Alert Rules is enabled"
         }
       }
     },
