@@ -81,14 +81,12 @@ class GeyserwalaText(GeyserwalaEntity, TextEntity):
     @property
     def native_value(self) -> str:
         """Value."""
-        if self._gw_key.startswith("__header_"):
+        if self._gw_key.startswith("__"):
             return " "
-        if self._gw_key.startswith("__note_"):
-            return "entities or settings go here."
         return self.coordinator.data.get_value(self._gw_key)
 
     async def async_set_value(self, value: str) -> None:
         """Set the text value."""
-        if self._gw_key.startswith("__header_"):
+        if self._gw_key.startswith("__"):
             return
         await self.coordinator.data.set_value(self._gw_key, value)

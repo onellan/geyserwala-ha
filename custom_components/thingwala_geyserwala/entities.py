@@ -25,6 +25,20 @@ except ModuleNotFoundError:  # pragma: no cover - lets local tests import the mo
     GEYSERWALA_SETPOINT_TEMP_MIN = 30
     GEYSERWALA_SETPOINT_TEMP_MAX = 80
 
+# Invisible sort prefixes keep config items grouped in the Home Assistant UI
+# without adding visible numbering or text prefixes to entity names.
+_S_CFG = "\u200b"
+_S_WIFI = "\u200b\u200b"
+_S_CLOUD = "\u200b\u200b\u200b"
+_S_DEVICE = "\u200b\u200b\u200b\u200b"
+_S_THRESH = "\u200b\u200b\u200b\u200b\u200b"
+_S_APP = "\u200b\u200b\u200b\u200b\u200b\u200b"
+_S_TIME = "\u200b\u200b\u200b\u200b\u200b\u200b\u200b"
+_S_MQTT = "\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b"
+_S_NET = "\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b"
+_S_REPORT = "\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b"
+_S_QUALITY = "\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b"
+
 ENTITIES = {
     "binary_sensor": [
         {
@@ -66,7 +80,7 @@ ENTITIES = {
             "unit": UnitOfTemperature.CELSIUS,
         },
         {
-            "name": "Setpoint Maximum",
+            "name": f"{_S_THRESH}Setpoint Maximum",
             "key": "setpoint-max",
             "device_class": NumberDeviceClass.TEMPERATURE,
             "icon": "mdi:thermostat-high",
@@ -77,7 +91,7 @@ ENTITIES = {
             "unit": UnitOfTemperature.CELSIUS,
         },
         {
-            "name": "Differential",
+            "name": f"{_S_THRESH}Differential",
             "key": "gw-diff",
             "device_class": None,
             "icon": "mdi:delta",
@@ -88,7 +102,7 @@ ENTITIES = {
             "unit": None,
         },
         {
-            "name": "Antifreeze Threshold",
+            "name": f"{_S_THRESH}Antifreeze Threshold",
             "key": "gw-antifreeze",
             "device_class": NumberDeviceClass.TEMPERATURE,
             "icon": "mdi:snowflake-thermometer",
@@ -99,7 +113,7 @@ ENTITIES = {
             "unit": UnitOfTemperature.CELSIUS,
         },
         {
-            "name": "DC Maximum Temperature",
+            "name": f"{_S_THRESH}DC Maximum Temperature",
             "key": "dc-max-temp",
             "device_class": NumberDeviceClass.TEMPERATURE,
             "icon": "mdi:thermometer-alert",
@@ -110,7 +124,7 @@ ENTITIES = {
             "unit": UnitOfTemperature.CELSIUS,
         },
         {
-            "name": "LDR Minimum",
+            "name": f"{_S_QUALITY}LDR Minimum",
             "key": "gw-ldr-min",
             "device_class": None,
             "icon": "mdi:brightness-5",
@@ -121,7 +135,7 @@ ENTITIES = {
             "unit": None,
         },
         {
-            "name": "UTC Offset",
+            "name": f"{_S_TIME}UTC Offset",
             "key": "utc-offset",
             "device_class": None,
             "icon": "mdi:clock-time-eight-outline",
@@ -132,7 +146,7 @@ ENTITIES = {
             "unit": None,
         },
         {
-            "name": "Port",
+            "name": f"{_S_TIME}Port",
             "key": "ntp-port",
             "device_class": None,
             "icon": "mdi:numeric",
@@ -143,7 +157,7 @@ ENTITIES = {
             "unit": None,
         },
         {
-            "name": "Port",
+            "name": f"{_S_MQTT}Port",
             "key": "mqtt-port",
             "device_class": None,
             "icon": "mdi:numeric",
@@ -195,7 +209,7 @@ ENTITIES = {
             "visible": True,
         },
         {
-            "name": "Enabled",
+            "name": f"{_S_APP}Enabled",
             "key": "app-enable",
             "icon_on": "mdi:application-cog",
             "icon_off": "mdi:application-off",
@@ -203,7 +217,7 @@ ENTITIES = {
             "entity_category": "config",
         },
         {
-            "name": "Enabled",
+            "name": f"{_S_MQTT}Enabled",
             "key": "mqtt-enable",
             "icon_on": "mdi:access-point-network",
             "icon_off": "mdi:access-point-network-off",
@@ -211,7 +225,7 @@ ENTITIES = {
             "entity_category": "config",
         },
         {
-            "name": "Auto Update",
+            "name": f"{_S_QUALITY}Auto Update",
             "key": "update-auto",
             "icon_on": "mdi:update",
             "icon_off": "mdi:update-off",
@@ -219,7 +233,7 @@ ENTITIES = {
             "entity_category": "config",
         },
         {
-            "name": "Usage Reporting",
+            "name": f"{_S_REPORT}Usage Reporting",
             "key": "usage-reporting",
             "icon_on": "mdi:chart-line",
             "icon_off": "mdi:chart-line-variant",
@@ -235,204 +249,186 @@ ENTITIES = {
             'visible': True,
         },
         {
-            "name": "Configuration",
+            "name": f"{_S_CFG}Configuration",
             "key": "__header_00_configuration",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "WiFi",
+            "name": f"{_S_WIFI}WiFi",
             "key": "__header_10_wifi",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "",
-            "key": "__note_10_wifi",
-            "visible": True,
-            "entity_category": "config",
-        },
-        {
-            "name": "SSID",
+            "name": f"{_S_WIFI}SSID",
             "key": "wifi-ssid",
             "icon": "mdi:wifi-cog",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Password",
+            "name": f"{_S_WIFI}Password",
             "key": "wifi-pass",
             "icon": "mdi:form-textbox-password",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Cloud",
+            "name": f"{_S_CLOUD}Cloud",
             "key": "__header_20_cloud",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "",
-            "key": "__note_20_cloud",
-            "visible": True,
-            "entity_category": "config",
-        },
-        {
-            "name": "Token",
+            "name": f"{_S_CLOUD}Token",
             "key": "cloud-token",
             "icon": "mdi:cloud-lock",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Device",
+            "name": f"{_S_DEVICE}Device",
             "key": "__header_30_device",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "",
-            "key": "__note_30_device",
-            "visible": True,
-            "entity_category": "config",
-        },
-        {
-            "name": "Name",
+            "name": f"{_S_DEVICE}Name",
             "key": "name",
             "icon": "mdi:rename-box",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Hostname",
+            "name": f"{_S_DEVICE}Hostname",
             "key": "hostname",
             "icon": "mdi:identifier",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Thresholds",
+            "name": f"{_S_THRESH}Thresholds",
             "key": "__header_40_thresholds",
             "icon": "mdi:format-header-2",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Local App",
+            "name": f"{_S_APP}Local App",
             "key": "__header_50_local_app",
             "icon": "mdi:format-header-2",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Password",
+            "name": f"{_S_APP}Password",
             "key": "app-pass",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Time",
+            "name": f"{_S_TIME}Time",
             "key": "__header_60_time",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Host",
+            "name": f"{_S_TIME}Host",
             "key": "ntp-host",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "MQTT",
+            "name": f"{_S_MQTT}MQTT",
             "key": "__header_70_mqtt",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Host",
+            "name": f"{_S_MQTT}Host",
             "key": "mqtt-host",
             "icon": "mdi:server",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "User",
+            "name": f"{_S_MQTT}User",
             "key": "mqtt-user",
             "icon": "mdi:account",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Password",
+            "name": f"{_S_MQTT}Password",
             "key": "mqtt-pass",
             "icon": "mdi:form-textbox-password",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Topic Template",
+            "name": f"{_S_MQTT}Topic Template",
             "key": "mqtt-topic-tmpl",
             "icon": "mdi:pound",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Client ID",
+            "name": f"{_S_MQTT}Client ID",
             "key": "mqtt-clientid",
             "icon": "mdi:identifier",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Network",
+            "name": f"{_S_NET}Network",
             "key": "__header_80_network",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Static IP",
+            "name": f"{_S_NET}Static IP",
             "key": "ip-static",
             "icon": "mdi:ip-network",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Netmask",
+            "name": f"{_S_NET}Netmask",
             "key": "ip-netmask",
             "icon": "mdi:ip-outline",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Gateway",
+            "name": f"{_S_NET}Gateway",
             "key": "ip-gateway",
             "icon": "mdi:router-network",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "DNS 1",
+            "name": f"{_S_NET}DNS 1",
             "key": "ip-dns1",
             "icon": "mdi:dns",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "DNS 2",
+            "name": f"{_S_NET}DNS 2",
             "key": "ip-dns2",
             "icon": "mdi:dns-outline",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Reporting",
+            "name": f"{_S_REPORT}Reporting",
             "key": "__header_90_reporting",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": "Quality",
+            "name": f"{_S_QUALITY}Quality",
             "key": "__header_95_quality",
             "visible": True,
             "entity_category": "config",
