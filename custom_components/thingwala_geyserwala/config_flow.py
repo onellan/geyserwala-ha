@@ -308,13 +308,9 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
                 self.config_entry.entry_id
             ] = user_input
 
-            # Check if any features are enabled - if so, show feature config step
-            if user_input.get("enable_mqtt") or user_input.get("enable_calibration") or user_input.get("enable_alerts"):
-                return await self.async_step_features()
-
-            # Merge with existing options to preserve any prior feature configs
-            final_options = {**self.config_entry.options, **user_input}
-            return self.async_create_entry(title="", data=final_options)
+            # Always show advanced feature configuration so all saved settings
+            # are visible and editable from integration settings.
+            return await self.async_step_features()
 
         # Load current values
         current_options = self.config_entry.options
@@ -357,44 +353,35 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
             self.config_entry.entry_id, {}
         )
 
-        enable_mqtt = base_options.get("enable_mqtt", current_options.get("enable_mqtt", False))
-        enable_calibration = base_options.get("enable_calibration", current_options.get("enable_calibration", False))
-        enable_alerts = base_options.get("enable_alerts", current_options.get("enable_alerts", False))
-
         default_mqtt_transport = current_options.get("transport", "http")
         default_mqtt_topic = current_options.get("mqtt_base_topic", "geyserwala")
 
-        schema_fields = {}
+        default_calibrations_json = current_options.get("calibrations_json", "").strip()
+        if not default_calibrations_json:
+            legacy_calibrations = current_options.get("calibrations", {})
+            if isinstance(legacy_calibrations, dict) and legacy_calibrations:
+                default_calibrations_json = json.dumps(legacy_calibrations, sort_keys=True)
 
-        # MQTT Configuration (if enabled)
-        if enable_mqtt:
-            schema_fields.update({
+        default_alert_rules_json = current_options.get("alert_rules_json", "").strip()
+        if not default_alert_rules_json:
+            legacy_alert_rules = current_options.get("alert_rules", [])
+            if isinstance(legacy_alert_rules, list) and legacy_alert_rules:
+                default_alert_rules_json = json.dumps(legacy_alert_rules)
+
+        schema = vol.Schema(
+            {
                 vol.Required("transport", default=default_mqtt_transport): vol.In(["http", "mqtt"]),
                 vol.Optional("mqtt_base_topic", default=default_mqtt_topic): str,
-            })
-
-        # Calibration Configuration (if enabled)
-        if enable_calibration:
-            schema_fields[vol.Optional("calibrations_json", default="")] = str
-
-        # Alert Rules Configuration (if enabled)
-        if enable_alerts:
-            schema_fields[vol.Optional("alert_rules_json", default="")] = str
-
-        if not schema_fields:
-            # No enabled features with configuration
-            return self.async_create_entry(
-                title="",
-                data={**self.config_entry.options, **base_options}
-            )
-
-        schema = vol.Schema(schema_fields)
+                vol.Optional("calibrations_json", default=default_calibrations_json): str,
+                vol.Optional("alert_rules_json", default=default_alert_rules_json): str,
+            }
+        )
 
         if user_input is not None:
             errors: dict[str, str] = {}
 
             calibrations_json = user_input.get("calibrations_json", "").strip()
-            if enable_calibration and calibrations_json:
+            if calibrations_json:
                 try:
                     parsed_calibrations = json.loads(calibrations_json)
                     if not isinstance(parsed_calibrations, dict):
@@ -403,7 +390,7 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
                     errors["calibrations_json"] = "invalid_calibrations_json"
 
             alert_rules_json = user_input.get("alert_rules_json", "").strip()
-            if enable_alerts and alert_rules_json:
+            if alert_rules_json:
                 try:
                     parsed_alert_rules = json.loads(alert_rules_json)
                     if not isinstance(parsed_alert_rules, list):
@@ -417,9 +404,9 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
                     data_schema=schema,
                     errors=errors,
                     description_placeholders={
-                        "mqtt_help": "Select MQTT as transport and specify the base topic for device communication",
-                        "calibration_help": "Enter JSON with per-entity calibration settings: {\"entity_key\": {\"offset\": 0, \"multiplier\": 1}}",
-                        "alerts_help": 'Enter JSON array of alert rules: [{"rule_id": "rule1", "entity_key": "...", "condition_type": "threshold", "condition_value": 50, "severity": "warning", "message_template": "...", "enabled": true}]',
+                        "mqtt_help": "Transport and topic settings are saved even if MQTT is disabled",
+                        "calibration_help": "JSON settings are preserved and used when calibration is enabled",
+                        "alerts_help": "JSON alert rules are preserved and used when alerts are enabled",
                     },
                 )
 
@@ -437,8 +424,8 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
             step_id="features",
             data_schema=schema,
             description_placeholders={
-                "mqtt_help": "Select MQTT as transport and specify the base topic for device communication",
-                "calibration_help": "Enter JSON with per-entity calibration settings: {\"entity_key\": {\"offset\": 0, \"multiplier\": 1}}",
-                "alerts_help": 'Enter JSON array of alert rules: [{"rule_id": "rule1", "entity_key": "...", "condition_type": "threshold", "condition_value": 50, "severity": "warning", "message_template": "...", "enabled": true}]',
+                "mqtt_help": "Transport and topic settings are saved even if MQTT is disabled",
+                "calibration_help": "JSON settings are preserved and used when calibration is enabled",
+                "alerts_help": "JSON alert rules are preserved and used when alerts are enabled",
             },
         )
