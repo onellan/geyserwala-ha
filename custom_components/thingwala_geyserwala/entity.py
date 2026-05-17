@@ -57,8 +57,8 @@ class GeyserwalaEntity(CoordinatorEntity[Any]):
             f"{slug}_{self._gw_key}",
             hass=hass,
         )
-        # Virtual header entities are local-only and do not map to device keys.
-        if not gw_key.startswith("__header_"):
+        # Virtual entities are local-only and do not map to device keys.
+        if not gw_key.startswith("__"):
             coordinator.data.subscribe(gw_key)
 
     async def async_will_remove_from_hass(self) -> None:

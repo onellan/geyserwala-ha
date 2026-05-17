@@ -237,14 +237,18 @@ ENTITIES = {
         {
             "name": "Configuration",
             "key": "__header_00_configuration",
-            "icon": "mdi:format-header-1",
             "visible": True,
             "entity_category": "config",
         },
         {
             "name": "WiFi",
             "key": "__header_10_wifi",
-            "icon": "mdi:format-header-2",
+            "visible": True,
+            "entity_category": "config",
+        },
+        {
+            "name": "",
+            "key": "__note_10_wifi",
             "visible": True,
             "entity_category": "config",
         },
@@ -265,7 +269,12 @@ ENTITIES = {
         {
             "name": "Cloud",
             "key": "__header_20_cloud",
-            "icon": "mdi:format-header-2",
+            "visible": True,
+            "entity_category": "config",
+        },
+        {
+            "name": "",
+            "key": "__note_20_cloud",
             "visible": True,
             "entity_category": "config",
         },
@@ -279,7 +288,12 @@ ENTITIES = {
         {
             "name": "Device",
             "key": "__header_30_device",
-            "icon": "mdi:format-header-2",
+            "visible": True,
+            "entity_category": "config",
+        },
+        {
+            "name": "",
+            "key": "__note_30_device",
             "visible": True,
             "entity_category": "config",
         },
@@ -314,28 +328,24 @@ ENTITIES = {
         {
             "name": "Password",
             "key": "app-pass",
-            "icon": "mdi:form-textbox-password",
             "visible": True,
             "entity_category": "config",
         },
         {
             "name": "Time",
             "key": "__header_60_time",
-            "icon": "mdi:format-header-2",
             "visible": True,
             "entity_category": "config",
         },
         {
             "name": "Host",
             "key": "ntp-host",
-            "icon": "mdi:server-network",
             "visible": True,
             "entity_category": "config",
         },
         {
             "name": "MQTT",
             "key": "__header_70_mqtt",
-            "icon": "mdi:format-header-2",
             "visible": True,
             "entity_category": "config",
         },
@@ -377,7 +387,6 @@ ENTITIES = {
         {
             "name": "Network",
             "key": "__header_80_network",
-            "icon": "mdi:format-header-2",
             "visible": True,
             "entity_category": "config",
         },
@@ -419,14 +428,12 @@ ENTITIES = {
         {
             "name": "Reporting",
             "key": "__header_90_reporting",
-            "icon": "mdi:format-header-2",
             "visible": True,
             "entity_category": "config",
         },
         {
             "name": "Quality",
             "key": "__header_95_quality",
-            "icon": "mdi:format-header-2",
             "visible": True,
             "entity_category": "config",
         },

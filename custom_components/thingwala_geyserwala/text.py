@@ -24,7 +24,7 @@ TEXT_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_NAME): cv.string,
         vol.Required("key"): cv.string,
-        vol.Optional("icon", default="mdi:form-textbox"): cv.string,
+        vol.Optional("icon", default=None): vol.Any(None, cv.string),
         vol.Optional("visible", default=False): cv.boolean,
         vol.Optional("entity_category", default=None): vol.Any(None, cv.string),
     }
@@ -37,8 +37,8 @@ class Text:
 
     name: str
     key: str
-    icon: str
     visible: bool
+    icon: str | None = None
     entity_category: str | None = None
 
 
@@ -82,7 +82,9 @@ class GeyserwalaText(GeyserwalaEntity, TextEntity):
     def native_value(self) -> str:
         """Value."""
         if self._gw_key.startswith("__header_"):
-            return ""
+            return " "
+        if self._gw_key.startswith("__note_"):
+            return "entities or settings go here."
         return self.coordinator.data.get_value(self._gw_key)
 
     async def async_set_value(self, value: str) -> None:
