@@ -63,6 +63,7 @@ from .const import (
 )
 
 _DEPENDENCY_ERROR_LOGGED = False
+_CONNECTION_KEYS = (CONF_HOST, CONF_PORT, CONF_USERNAME, CONF_PASSWORD)
 
 
 class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -73,7 +74,7 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     def async_get_options_flow(config_entry: ConfigEntry) -> GeyserwalaOptionsFlow:
         """Return the options flow handler."""
-        return GeyserwalaOptionsFlow(config_entry)
+        return GeyserwalaOptionsFlow()
 
     def __init__(self) -> None:
         """Init."""
@@ -300,20 +301,53 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
     """Options flow for Geyserwala integration."""
 
+    async def _async_validate_connection(
+        self,
+        host: str,
+        port: int,
+        username: str,
+        password: str,
+    ) -> str | None:
+        """Validate connection settings from options flow."""
+        if not _DEPENDENCY_AVAILABLE:
+            if isinstance(_DEPENDENCY_IMPORT_ERROR, ModuleNotFoundError):
+                return "dependency_not_installed"
+            return "dependency_load_failed"
+
+        session = async_create_clientsession(self.hass)
+        api = GeyserwalaClientAsync(
+            host=host,
+            port=port,
+            username=username,
+            password=password,
+            session=session,
+        )
+        try:
+            async with asyncio.timeout(20):
+                connected = await api.update()
+            if not connected:
+                return "cannot_connect"
+        except Unauthorized:
+            return "invalid_auth"
+        except (GeyserwalaException, TimeoutError):
+            return "cannot_connect"
+        except Exception:  # pylint: disable=broad-except
+            _LOGGER.exception(
+                "[Geyserwala] Unexpected error while validating connection changes in options flow"
+            )
+            return "cannot_connect"
+        return None
+
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Manage integration options - polling and feature selection."""
-        if user_input is not None:
-            # Store the main options and proceed to feature-specific configuration
-            self.hass.data.setdefault("_geyserwala_config_flow_state", {})[
-                self.config_entry.entry_id
-            ] = user_input
-
-            # Always show advanced feature configuration so all saved settings
-            # are visible and editable from integration settings.
-            return await self.async_step_features()
-
-        # Load current values
+        current_data = self.config_entry.data
         current_options = self.config_entry.options
+
+        current_host = current_data.get(CONF_HOST, "")
+        current_port = current_data.get(CONF_PORT, DEFAULT_PORT)
+        current_username = current_data.get(CONF_USERNAME, DEFAULT_USERNAME)
+        current_password = current_data.get(CONF_PASSWORD, "")
+
         default_interval = current_options.get("update_interval", DEFAULT_UPDATE_INTERVAL_SECONDS)
         enable_mqtt = current_options.get("enable_mqtt", False)
         enable_calibration = current_options.get("enable_calibration", False)
@@ -322,6 +356,11 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
 
         schema = vol.Schema(
             {
+                # Device Connection Configuration
+                vol.Required(CONF_HOST, default=current_host): str,
+                vol.Required(CONF_PORT, default=current_port): int,
+                vol.Required(CONF_USERNAME, default=current_username): str,
+                vol.Optional(CONF_PASSWORD, default=current_password): str,
                 # Polling Configuration
                 vol.Required("update_interval", default=default_interval): vol.All(
                     vol.Coerce(int),
@@ -334,6 +373,51 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
                 vol.Required("enable_alerts", default=enable_alerts): bool,
             }
         )
+
+        if user_input is not None:
+            updated_host = user_input[CONF_HOST]
+            updated_port = user_input[CONF_PORT]
+            updated_username = user_input[CONF_USERNAME]
+            updated_password = user_input[CONF_PASSWORD]
+
+            connection_changed = any(
+                (
+                    updated_host != current_host,
+                    updated_port != current_port,
+                    updated_username != current_username,
+                    updated_password != current_password,
+                )
+            )
+
+            if connection_changed:
+                validation_error = await self._async_validate_connection(
+                    host=updated_host,
+                    port=updated_port,
+                    username=updated_username,
+                    password=updated_password,
+                )
+                if validation_error:
+                    return self.async_show_form(
+                        step_id="init",
+                        data_schema=schema,
+                        errors={"base": validation_error},
+                        description_placeholders={
+                            "services_info": "Set boost, mode, read/clear error codes",
+                            "mqtt_info": "Use MQTT transport instead of HTTP",
+                            "calibration_info": "Per-entity offset and multiplier adjustments",
+                            "alerts_info": "Threshold and state-change notifications",
+                        },
+                    )
+
+            # Store the main options and proceed to feature-specific configuration
+            self.hass.data.setdefault("_geyserwala_config_flow_state", {})[
+                self.config_entry.entry_id
+            ] = user_input
+
+            # Always show advanced feature configuration so all saved settings
+            # are visible and editable from integration settings.
+            return await self.async_step_features()
+
         return self.async_show_form(
             step_id="init",
             data_schema=schema,
@@ -349,9 +433,16 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
         """Configure enabled features - MQTT, calibration, alerts."""
         # Load current feature configurations
         current_options = self.config_entry.options
-        base_options = self.hass.data.get("_geyserwala_config_flow_state", {}).get(
+        base_state = self.hass.data.get("_geyserwala_config_flow_state", {}).get(
             self.config_entry.entry_id, {}
         )
+
+        base_options = {
+            key: value for key, value in base_state.items() if key not in _CONNECTION_KEYS
+        }
+        connection_updates = {
+            key: base_state.get(key, self.config_entry.data.get(key)) for key in _CONNECTION_KEYS
+        }
 
         default_mqtt_transport = current_options.get("transport", "http")
         default_mqtt_topic = current_options.get("mqtt_base_topic", "geyserwala")
@@ -413,10 +504,25 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
             # Merge feature configurations with base options
             final_options = {**self.config_entry.options, **base_options, **user_input}
 
+            # Apply connection updates to config entry data from the options screen.
+            updated_data = dict(self.config_entry.data)
+            connection_changed = False
+            for key, value in connection_updates.items():
+                if value is not None and updated_data.get(key) != value:
+                    updated_data[key] = value
+                    connection_changed = True
+
+            if connection_changed:
+                self.hass.config_entries.async_update_entry(self.config_entry, data=updated_data)
+
             # Clean up temporary state
             self.hass.data.get("_geyserwala_config_flow_state", {}).pop(
                 self.config_entry.entry_id, None
             )
+
+            # If only connection fields changed, trigger reload explicitly.
+            if connection_changed and final_options == self.config_entry.options:
+                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
 
             return self.async_create_entry(title="", data=final_options)
 

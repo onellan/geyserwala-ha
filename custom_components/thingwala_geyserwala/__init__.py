@@ -240,6 +240,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if entry.unique_id is None:
         hass.config_entries.async_update_entry(entry, unique_id=gwc.id)
 
+    entry.async_on_unload(entry.add_update_listener(_async_handle_options_update))
+
     # Register services only once and only if enabled (when first entry is added)
     if enable_services and len(hass.data[DOMAIN]) == 1:
         _LOGGER.debug("[Geyserwala] Registering custom services")
@@ -258,6 +260,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data.get(f"{DOMAIN}_alert_evaluators", {}).pop(entry.entry_id, None)
         hass.data.get(f"{DOMAIN}_alert_rules", {}).pop(entry.entry_id, None)
     return unload_ok
+
+
+async def _async_handle_options_update(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload config entry after options changes."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
