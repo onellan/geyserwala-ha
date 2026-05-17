@@ -19,7 +19,12 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import (
     async_create_clientsession,
 )
-from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
+
+try:
+    from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
+except ModuleNotFoundError:  # pragma: no cover - compatibility with older Home Assistant builds.
+    from homeassistant.components.zeroconf import ZeroconfServiceInfo
+
 from homeassistant.util.network import is_ipv6_address
 
 try:
