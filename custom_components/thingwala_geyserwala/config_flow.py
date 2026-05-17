@@ -74,7 +74,12 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     def async_get_options_flow(config_entry: ConfigEntry) -> GeyserwalaOptionsFlow:
         """Return the options flow handler."""
-        return GeyserwalaOptionsFlow()
+        try:
+            return GeyserwalaOptionsFlow(config_entry)
+        except TypeError:
+            # Compatibility with Home Assistant builds where
+            # OptionsFlowWithConfigEntry takes no constructor args.
+            return GeyserwalaOptionsFlow()
 
     def __init__(self) -> None:
         """Init."""
@@ -217,7 +222,7 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             host = user_input[CONF_HOST]
             port = user_input[CONF_PORT]
             username = user_input[CONF_USERNAME]
-            password = user_input[CONF_PASSWORD]
+            password = user_input.get(CONF_PASSWORD, config_entry.data.get(CONF_PASSWORD, ""))
 
             _LOGGER.debug(
                 "[Geyserwala] Starting reconfiguration validation for host=%s port=%s username=%s",
@@ -378,7 +383,7 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
             updated_host = user_input[CONF_HOST]
             updated_port = user_input[CONF_PORT]
             updated_username = user_input[CONF_USERNAME]
-            updated_password = user_input[CONF_PASSWORD]
+            updated_password = user_input.get(CONF_PASSWORD, current_password)
 
             connection_changed = any(
                 (
