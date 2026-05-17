@@ -611,27 +611,27 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
                         },
                     )
 
-            # Store the main options and proceed to feature-specific configuration
-            self.hass.data.setdefault("_geyserwala_config_flow_state", {})[
-                self.config_entry.entry_id
-            ] = {
-                **user_input,
-            }
+            updated_data = dict(current_data)
+            updated_data[CONF_HOST] = updated_host
+            updated_data[CONF_PORT] = updated_port
+            updated_data[CONF_USERNAME] = updated_username
+            updated_data[CONF_PASSWORD] = updated_password
 
-            snapshot = await self._async_fetch_device_snapshot(
-                host=updated_host,
-                port=updated_port,
-                username=updated_username,
-                password=updated_password,
+            if updated_data != dict(current_data):
+                self.hass.config_entries.async_update_entry(self.config_entry, data=updated_data)
+
+            final_options = dict(current_options)
+            final_options.update(
+                {
+                    "update_interval": user_input["update_interval"],
+                    "enable_services": user_input["enable_services"],
+                    "enable_mqtt": user_input["enable_mqtt"],
+                    "enable_calibration": user_input["enable_calibration"],
+                    "enable_alerts": user_input["enable_alerts"],
+                }
             )
-            if snapshot:
-                self.hass.data.setdefault("_geyserwala_config_flow_state", {})[
-                    self.config_entry.entry_id
-                ]["_device_snapshot"] = snapshot
 
-            # Always show advanced feature configuration so all saved settings
-            # are visible and editable from integration settings.
-            return await self.async_step_device()
+            return self.async_create_entry(title="", data=final_options)
 
         return self.async_show_form(
             step_id="init",

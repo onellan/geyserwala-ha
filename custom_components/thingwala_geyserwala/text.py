@@ -14,6 +14,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .entity import GeyserwalaEntity
@@ -25,6 +26,7 @@ TEXT_SCHEMA = vol.Schema(
         vol.Required("key"): cv.string,
         vol.Optional("icon", default="mdi:form-textbox"): cv.string,
         vol.Optional("visible", default=False): cv.boolean,
+        vol.Optional("entity_category", default=None): vol.Any(None, cv.string),
     }
 )
 
@@ -37,6 +39,16 @@ class Text:
     key: str
     icon: str
     visible: bool
+    entity_category: str | None = None
+
+
+def _map_entity_category(value: str | None) -> EntityCategory | None:
+    """Map optional entity category string to Home Assistant enum."""
+    if value == "config":
+        return EntityCategory.CONFIG
+    if value == "diagnostic":
+        return EntityCategory.DIAGNOSTIC
+    return None
 
 
 async def async_setup_entry(
@@ -56,7 +68,7 @@ async def async_setup_entry(
             key=item.key,
             has_entity_name=True,
             name=item.name,
-            entity_category=None,
+            entity_category=_map_entity_category(item.entity_category),
             icon=item.icon,
             entity_registry_visible_default=item.visible,
         ),

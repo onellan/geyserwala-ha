@@ -133,17 +133,13 @@ async def test_async_fetch_device_snapshot_reads_all_device_keys(monkeypatch) ->
 
 
 @pytest.mark.asyncio
-async def test_async_step_init_stores_state_and_advances_to_device(monkeypatch) -> None:
-    """Submitting the connection step should validate and hand off to the mirrored device step."""
+async def test_async_step_init_persists_connection_and_options(monkeypatch) -> None:
+    """Submitting the options form should persist connection updates and create entry data."""
     flow = _make_flow()
     monkeypatch.setattr(flow_mod, "_DEPENDENCY_AVAILABLE", True)
     monkeypatch.setattr(flow_mod, "GeyserwalaClientAsync", FakeGeyserwalaClient)
     validate_mock = AsyncMock(return_value=None)
-    snapshot_mock = AsyncMock(return_value={"status": "Online", "wifi-ssid": "HouseWiFi"})
-    device_step_mock = AsyncMock(return_value={"type": "form", "step_id": "device"})
     monkeypatch.setattr(flow, "_async_validate_connection", validate_mock)
-    monkeypatch.setattr(flow, "_async_fetch_device_snapshot", snapshot_mock)
-    monkeypatch.setattr(flow, "async_step_device", device_step_mock)
 
     result = await flow.async_step_init(
         {
@@ -159,25 +155,19 @@ async def test_async_step_init_stores_state_and_advances_to_device(monkeypatch) 
         }
     )
 
-    assert result == {"type": "form", "step_id": "device"}
+    assert result["type"] == "create_entry"
+    assert result["title"] == ""
+    assert result["data"]["update_interval"] == 15
+    assert result["data"]["enable_mqtt"] is True
+    assert result["data"]["enable_calibration"] is False
+    assert result["data"]["enable_alerts"] is True
     validate_mock.assert_awaited_once_with(
         host="192.168.1.106",
         port=80,
         username="admin",
         password="existing-password",
     )
-    snapshot_mock.assert_awaited_once_with(
-        host="192.168.1.106",
-        port=80,
-        username="admin",
-        password="existing-password",
-    )
-    device_step_mock.assert_awaited_once()
-    assert flow.hass.data["_geyserwala_config_flow_state"]["entry-1"]["update_interval"] == 15
-    assert flow.hass.data["_geyserwala_config_flow_state"]["entry-1"]["_device_snapshot"] == {
-        "status": "Online",
-        "wifi-ssid": "HouseWiFi",
-    }
+    flow.hass.config_entries.async_update_entry.assert_called_once()
 
 
 @pytest.mark.asyncio

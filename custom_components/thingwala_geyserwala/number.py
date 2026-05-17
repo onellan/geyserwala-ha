@@ -16,6 +16,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .entity import GeyserwalaEntity
@@ -27,8 +28,9 @@ NUMBER_SCHEMA = vol.Schema({
     vol.Optional('device_class', default=None): vol.Any(None, cv.string),
     vol.Optional('icon', default='mdi:numeric'): cv.string,
     vol.Optional('visible', default=False): cv.boolean,
-    vol.Optional('min', default=0): cv.positive_int,
-    vol.Optional('max', default=4294967296): cv.positive_int,
+    vol.Optional('entity_category', default=None): vol.Any(None, cv.string),
+    vol.Optional('min', default=0): vol.Coerce(int),
+    vol.Optional('max', default=4294967296): vol.Coerce(int),
     vol.Optional('unit', default=None): vol.Any(None, cv.string),
 })
 
@@ -45,6 +47,16 @@ class Number:
     min: int
     max: int
     unit: str
+    entity_category: str | None = None
+
+
+def _map_entity_category(value: str | None) -> EntityCategory | None:
+    """Map optional entity category string to Home Assistant enum."""
+    if value == "config":
+        return EntityCategory.CONFIG
+    if value == "diagnostic":
+        return EntityCategory.DIAGNOSTIC
+    return None
 
 
 async def async_setup_entry(
@@ -64,7 +76,7 @@ async def async_setup_entry(
             key=item.key,
             has_entity_name=True,
             name=item.name,
-            entity_category=None,
+            entity_category=_map_entity_category(item.entity_category),
             device_class=item.device_class,
             native_min_value=item.min,
             native_max_value=item.max,
