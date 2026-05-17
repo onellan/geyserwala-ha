@@ -77,27 +77,40 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                     )
 
     async def async_step_validate(self) -> FlowResult:
-        """Handle device validation."""
+        """Handle device validation with detailed logging."""
+        from .const import _LOGGER
         session = async_create_clientsession(self.hass)
-        api = GeyserwalaClientAsync(host=self._config[CONF_HOST],
-                                    port=self._config[CONF_PORT],
-                                    username=self._config[CONF_USERNAME],
+        host = self._config[CONF_HOST]
+        port = self._config[CONF_PORT]
+        username = self._config[CONF_USERNAME]
+        _LOGGER.debug("[Geyserwala] Starting validation for host=%s port=%s username=%s", host, port, username)
+        api = GeyserwalaClientAsync(host=host,
+                                    port=port,
+                                    username=username,
                                     password=self._config[CONF_PASSWORD],
                                     session=session,
                                     )
         try:
             if not await api.update():
+                _LOGGER.error("[Geyserwala] Device unreachable at %s:%s", host, port)
                 return self.async_abort(reason="unreachable")
-        except Unauthorized:
+        except Unauthorized as ex:
+            _LOGGER.error("[Geyserwala] Unauthorized for %s:%s - %s", host, port, ex)
             self._errors['base'] = 'invalid_auth'
             return await self.async_step_user()
-        except GeyserwalaException:
+        except GeyserwalaException as ex:
+            _LOGGER.error("[Geyserwala] Cannot connect to %s:%s - %s", host, port, ex)
+            self._errors['base'] = 'cannot_connect'
+            return await self.async_step_user()
+        except Exception:
+            _LOGGER.exception("[Geyserwala] Unexpected error during validation for %s:%s", host, port)
             self._errors['base'] = 'cannot_connect'
             return await self.async_step_user()
         self._config['id'] = api.id
         self._config['name'] = api.name
         self._config['hostname'] = api.hostname
 
+        _LOGGER.info("[Geyserwala] Successfully validated device at %s:%s", host, port)
         return self.async_create_entry(
             title=self._config['name'],
             data=self._config
