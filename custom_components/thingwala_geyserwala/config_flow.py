@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import importlib
 import json
+from datetime import UTC, datetime
 from typing import Any
 
 import voluptuous as vol
@@ -64,6 +65,104 @@ from .const import (
 
 _DEPENDENCY_ERROR_LOGGED = False
 _CONNECTION_KEYS = (CONF_HOST, CONF_PORT, CONF_USERNAME, CONF_PASSWORD)
+_DEVICE_STATUS_KEYS = (
+    "status",
+    "version",
+    "wifi-status",
+    "cloud-status",
+    "mqtt-up",
+    "unixtime",
+)
+_DEVICE_SETTING_KEYS = (
+    "wifi-ssid",
+    "wifi-pass",
+    "cloud-token",
+    "name",
+    "hostname",
+    "setpoint-max",
+    "gw-diff",
+    "gw-antifreeze",
+    "dc-max-temp",
+    "gw-ldr-min",
+    "app-enable",
+    "app-pass",
+    "utc-offset",
+    "ntp-host",
+    "ntp-port",
+    "mqtt-enable",
+    "mqtt-host",
+    "mqtt-port",
+    "mqtt-user",
+    "mqtt-pass",
+    "mqtt-topic-tmpl",
+    "mqtt-clientid",
+    "ip-static",
+    "ip-netmask",
+    "ip-gateway",
+    "ip-dns1",
+    "ip-dns2",
+    "update-auto",
+    "usage-reporting",
+)
+_SECRET_DEVICE_KEYS = {
+    "wifi-pass",
+    "cloud-token",
+    "app-pass",
+    "mqtt-pass",
+    CONF_PASSWORD,
+}
+
+
+def _display_value(value: Any) -> str:
+    """Format device values for display in a settings summary."""
+    if value is None:
+        return "unknown"
+    if isinstance(value, bool):
+        return "Online" if value else "Offline"
+    if isinstance(value, (int, float)):
+        if value > 10_000_000:
+            return datetime.fromtimestamp(value, tz=UTC).strftime("%Y-%m-%d %H:%M:%SZ")
+        return str(value)
+    return str(value)
+
+
+def _coerce_int(value: Any, default: int) -> int:
+    """Coerce a device value to int with fallback."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _coerce_bool(value: Any, default: bool = False) -> bool:
+    """Coerce a device value to bool with fallback."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "on", "yes", "enabled"}:
+            return True
+        if normalized in {"0", "false", "off", "no", "disabled"}:
+            return False
+    if value is None:
+        return default
+    return bool(value)
+
+
+def _secret_default(current_value: Any, fallback: str = "") -> str:
+    """Return a safe default for secret fields."""
+    if current_value in (None, "", "********", "none"):
+        return fallback
+    return str(current_value)
+
+
+def _device_option_value(device_data: dict[str, Any], options: dict[str, Any], key: str, fallback: Any) -> Any:
+    """Prefer stored option values, then live device data, then fallback."""
+    if key in options and options[key] not in (None, ""):
+        return options[key]
+    if key in device_data and device_data[key] not in (None, ""):
+        return device_data[key]
+    return fallback
 
 
 class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -343,6 +442,96 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
             return "cannot_connect"
         return None
 
+    async def _async_fetch_device_snapshot(
+        self,
+        host: str,
+        port: int,
+        username: str,
+        password: str,
+    ) -> dict[str, Any]:
+        """Fetch the current device state and settings for the settings screen."""
+        if not _DEPENDENCY_AVAILABLE:
+            return {}
+
+        session = async_create_clientsession(self.hass)
+        api = GeyserwalaClientAsync(
+            host=host,
+            port=port,
+            username=username,
+            password=password,
+            session=session,
+        )
+
+        for key in _DEVICE_STATUS_KEYS + _DEVICE_SETTING_KEYS:
+            api.subscribe(key)
+
+        snapshot: dict[str, Any] = {}
+        try:
+            async with asyncio.timeout(20):
+                await api.update()
+            for key in _DEVICE_STATUS_KEYS + _DEVICE_SETTING_KEYS:
+                snapshot[key] = api.get_value(key)
+        except Exception:  # pylint: disable=broad-except
+            _LOGGER.exception("[Geyserwala] Failed to fetch live device settings snapshot")
+        finally:
+            await api.close()
+        return snapshot
+
+    def _async_device_placeholders(self, snapshot: dict[str, Any]) -> dict[str, str]:
+        """Build display placeholders for live device status values."""
+        return {
+            "device_status": _display_value(snapshot.get("status")),
+            "device_version": _display_value(snapshot.get("version")),
+            "wifi_status": _display_value(snapshot.get("wifi-status")),
+            "cloud_status": _display_value(snapshot.get("cloud-status")),
+            "mqtt_status": _display_value(snapshot.get("mqtt-up")),
+            "device_time": _display_value(snapshot.get("unixtime")),
+        }
+
+    def _build_device_schema(
+        self,
+        snapshot: dict[str, Any],
+        options: dict[str, Any],
+    ) -> vol.Schema:
+        """Build the full device settings schema."""
+        return vol.Schema(
+            {
+                vol.Optional("wifi-ssid", default=_device_option_value(snapshot, options, "wifi-ssid", "")): str,
+                vol.Optional("wifi-pass", default=_secret_default(options.get("wifi-pass"), snapshot.get("wifi-pass", ""))): str,
+                vol.Optional("cloud-token", default=_secret_default(options.get("cloud-token"), snapshot.get("cloud-token", ""))): str,
+                vol.Optional("name", default=_device_option_value(snapshot, options, "name", self.config_entry.data.get(CONF_HOST, "Geyserwala"))): str,
+                vol.Optional("hostname", default=_device_option_value(snapshot, options, "hostname", self.config_entry.data.get(CONF_HOST, ""))): str,
+                vol.Optional("setpoint-max", default=_coerce_int(_device_option_value(snapshot, options, "setpoint-max", 55), 55)): vol.All(vol.Coerce(int), vol.Range(min=30, max=80)),
+                vol.Optional("gw-diff", default=_coerce_int(_device_option_value(snapshot, options, "gw-diff", 7), 7)): vol.All(vol.Coerce(int), vol.Range(min=1, max=30)),
+                vol.Optional("gw-antifreeze", default=_coerce_int(_device_option_value(snapshot, options, "gw-antifreeze", 10), 10)): vol.All(vol.Coerce(int), vol.Range(min=0, max=30)),
+                vol.Optional("dc-max-temp", default=_coerce_int(_device_option_value(snapshot, options, "dc-max-temp", 60), 60)): vol.All(vol.Coerce(int), vol.Range(min=30, max=90)),
+                vol.Optional("gw-ldr-min", default=_coerce_int(_device_option_value(snapshot, options, "gw-ldr-min", 0), 0)): vol.All(vol.Coerce(int), vol.Range(min=0, max=1000)),
+                vol.Optional("app-enable", default=_coerce_bool(_device_option_value(snapshot, options, "app-enable", False))): bool,
+                vol.Optional("app-pass", default=_secret_default(options.get("app-pass"), snapshot.get("app-pass", ""))): str,
+                vol.Optional("utc-offset", default=_coerce_int(_device_option_value(snapshot, options, "utc-offset", 0), 0)): vol.All(vol.Coerce(int), vol.Range(min=-720, max=840)),
+                vol.Optional("ntp-host", default=_device_option_value(snapshot, options, "ntp-host", "pool.ntp.org")): str,
+                vol.Optional("ntp-port", default=_coerce_int(_device_option_value(snapshot, options, "ntp-port", 123), 123)): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
+                vol.Optional("mqtt-enable", default=_coerce_bool(_device_option_value(snapshot, options, "mqtt-enable", False))): bool,
+                vol.Optional("mqtt-host", default=_device_option_value(snapshot, options, "mqtt-host", "")): str,
+                vol.Optional("mqtt-port", default=_coerce_int(_device_option_value(snapshot, options, "mqtt-port", 1883), 1883)): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
+                vol.Optional("mqtt-user", default=_device_option_value(snapshot, options, "mqtt-user", "")): str,
+                vol.Optional("mqtt-pass", default=_secret_default(options.get("mqtt-pass"), snapshot.get("mqtt-pass", ""))): str,
+                vol.Optional("mqtt-topic-tmpl", default=_device_option_value(snapshot, options, "mqtt-topic-tmpl", "geyserwala/%prefix%/%mac%")): str,
+                vol.Optional("mqtt-clientid", default=_device_option_value(snapshot, options, "mqtt-clientid", "geyserwala-%mac%")): str,
+                vol.Optional("ip-static", default=_device_option_value(snapshot, options, "ip-static", "")): str,
+                vol.Optional("ip-netmask", default=_device_option_value(snapshot, options, "ip-netmask", "")): str,
+                vol.Optional("ip-gateway", default=_device_option_value(snapshot, options, "ip-gateway", "")): str,
+                vol.Optional("ip-dns1", default=_device_option_value(snapshot, options, "ip-dns1", "")): str,
+                vol.Optional("ip-dns2", default=_device_option_value(snapshot, options, "ip-dns2", "")): str,
+                vol.Optional("update-auto", default=_coerce_bool(_device_option_value(snapshot, options, "update-auto", False))): bool,
+                vol.Optional("usage-reporting", default=_coerce_bool(_device_option_value(snapshot, options, "usage-reporting", False))): bool,
+                vol.Optional("transport", default=options.get("transport", "http")): vol.In(["http", "mqtt"]),
+                vol.Optional("mqtt_base_topic", default=options.get("mqtt_base_topic", "geyserwala")): str,
+                vol.Optional("calibrations_json", default=options.get("calibrations_json", "")): str,
+                vol.Optional("alert_rules_json", default=options.get("alert_rules_json", "")): str,
+            }
+        )
+
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Manage integration options - polling and feature selection."""
         current_data = self.config_entry.data
@@ -417,11 +606,24 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
             # Store the main options and proceed to feature-specific configuration
             self.hass.data.setdefault("_geyserwala_config_flow_state", {})[
                 self.config_entry.entry_id
-            ] = user_input
+            ] = {
+                **user_input,
+            }
+
+            snapshot = await self._async_fetch_device_snapshot(
+                host=updated_host,
+                port=updated_port,
+                username=updated_username,
+                password=updated_password,
+            )
+            if snapshot:
+                self.hass.data.setdefault("_geyserwala_config_flow_state", {})[
+                    self.config_entry.entry_id
+                ]["_device_snapshot"] = snapshot
 
             # Always show advanced feature configuration so all saved settings
             # are visible and editable from integration settings.
-            return await self.async_step_features()
+            return await self.async_step_device()
 
         return self.async_show_form(
             step_id="init",
@@ -434,44 +636,13 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
             },
         )
 
-    async def async_step_features(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Configure enabled features - MQTT, calibration, alerts."""
-        # Load current feature configurations
-        current_options = self.config_entry.options
+    async def async_step_device(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        """Configure the mirrored device settings from the controller web UI."""
         base_state = self.hass.data.get("_geyserwala_config_flow_state", {}).get(
             self.config_entry.entry_id, {}
         )
-
-        base_options = {
-            key: value for key, value in base_state.items() if key not in _CONNECTION_KEYS
-        }
-        connection_updates = {
-            key: base_state.get(key, self.config_entry.data.get(key)) for key in _CONNECTION_KEYS
-        }
-
-        default_mqtt_transport = current_options.get("transport", "http")
-        default_mqtt_topic = current_options.get("mqtt_base_topic", "geyserwala")
-
-        default_calibrations_json = current_options.get("calibrations_json", "").strip()
-        if not default_calibrations_json:
-            legacy_calibrations = current_options.get("calibrations", {})
-            if isinstance(legacy_calibrations, dict) and legacy_calibrations:
-                default_calibrations_json = json.dumps(legacy_calibrations, sort_keys=True)
-
-        default_alert_rules_json = current_options.get("alert_rules_json", "").strip()
-        if not default_alert_rules_json:
-            legacy_alert_rules = current_options.get("alert_rules", [])
-            if isinstance(legacy_alert_rules, list) and legacy_alert_rules:
-                default_alert_rules_json = json.dumps(legacy_alert_rules)
-
-        schema = vol.Schema(
-            {
-                vol.Required("transport", default=default_mqtt_transport): vol.In(["http", "mqtt"]),
-                vol.Optional("mqtt_base_topic", default=default_mqtt_topic): str,
-                vol.Optional("calibrations_json", default=default_calibrations_json): str,
-                vol.Optional("alert_rules_json", default=default_alert_rules_json): str,
-            }
-        )
+        snapshot = base_state.get("_device_snapshot", {})
+        schema = self._build_device_schema(snapshot=snapshot, options=self.config_entry.options)
 
         if user_input is not None:
             errors: dict[str, str] = {}
@@ -500,43 +671,40 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
                     data_schema=schema,
                     errors=errors,
                     description_placeholders={
-                        "mqtt_help": "Transport and topic settings are saved even if MQTT is disabled",
-                        "calibration_help": "JSON settings are preserved and used when calibration is enabled",
-                        "alerts_help": "JSON alert rules are preserved and used when alerts are enabled",
+                        **self._async_device_placeholders(snapshot),
+                        "settings_help": "Edit the local device configuration mirrored from the Geyserwala Settings screen.",
                     },
                 )
 
-            # Merge feature configurations with base options
-            final_options = {**self.config_entry.options, **base_options, **user_input}
+            final_options = dict(self.config_entry.options)
 
-            # Apply connection updates to config entry data from the options screen.
-            updated_data = dict(self.config_entry.data)
-            connection_changed = False
-            for key, value in connection_updates.items():
-                if value is not None and updated_data.get(key) != value:
-                    updated_data[key] = value
-                    connection_changed = True
+            for key, value in user_input.items():
+                if key in _CONNECTION_KEYS:
+                    continue
+                if key in _SECRET_DEVICE_KEYS and value == "" and key in final_options:
+                    continue
+                final_options[key] = value
 
-            if connection_changed:
-                self.hass.config_entries.async_update_entry(self.config_entry, data=updated_data)
-
-            # Clean up temporary state
             self.hass.data.get("_geyserwala_config_flow_state", {}).pop(
                 self.config_entry.entry_id, None
             )
 
-            # If only connection fields changed, trigger reload explicitly.
-            if connection_changed and final_options == self.config_entry.options:
-                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+            updated_data = dict(self.config_entry.data)
+            for key in _CONNECTION_KEYS:
+                if key in base_state and base_state[key] not in (None, ""):
+                    updated_data[key] = base_state[key]
 
+            if updated_data != dict(self.config_entry.data):
+                self.hass.config_entries.async_update_entry(self.config_entry, data=updated_data)
+
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
             return self.async_create_entry(title="", data=final_options)
 
         return self.async_show_form(
             step_id="features",
             data_schema=schema,
             description_placeholders={
-                "mqtt_help": "Transport and topic settings are saved even if MQTT is disabled",
-                "calibration_help": "JSON settings are preserved and used when calibration is enabled",
-                "alerts_help": "JSON alert rules are preserved and used when alerts are enabled",
+                **self._async_device_placeholders(snapshot),
+                "settings_help": "Edit the local device configuration mirrored from the Geyserwala Settings screen.",
             },
         )

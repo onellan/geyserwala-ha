@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+import pytest
 
 from custom_components.thingwala_geyserwala.__init__ import (
+    _async_handle_options_update,
     _merge_custom_entities,
     get_update_interval,
 )
@@ -43,3 +47,15 @@ def test_merge_custom_entities_keeps_defaults_and_adds_yaml_entries() -> None:
     assert "text" in merged
     assert any(item.get("key") == "x" for item in merged["sensor"])
     assert any(item.get("key") == "alias" for item in merged["text"])
+
+
+@pytest.mark.asyncio
+async def test_options_update_listener_reloads_entry() -> None:
+    """Options updates should trigger a config entry reload."""
+    reload_mock = AsyncMock()
+    hass = SimpleNamespace(config_entries=SimpleNamespace(async_reload=reload_mock))
+    entry = SimpleNamespace(entry_id="abc123")
+
+    await _async_handle_options_update(hass, entry)
+
+    reload_mock.assert_awaited_once_with("abc123")
