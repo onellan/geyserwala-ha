@@ -5,8 +5,6 @@
 
 from dataclasses import dataclass
 
-import asyncio
-
 from homeassistant.components.text import (
     TextEntity,
     TextEntityDescription,
@@ -68,10 +66,10 @@ class GeyserwalaText(GeyserwalaEntity, TextEntity):
     """Geyserwala text entity."""
 
     @property
-    def native_value(self) -> int:
+    def native_value(self) -> str:
         """Value."""
         return self.coordinator.data.get_value(self._gw_key)
 
-    async def async_set_value(self, _value: str) -> None:
+    async def async_set_value(self, value: str) -> None:
         """Set the text value."""
-        await asyncio.sleep(1)
+        await self.coordinator.data.set_value(self._gw_key, value)

@@ -6,7 +6,7 @@
 from datetime import timedelta
 from typing import List
 
-import async_timeout
+import asyncio
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -58,14 +58,14 @@ CONFIG_SCHEMA = vol.Schema({
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up as config entry."""
     async def _async_update_status():
-        async with async_timeout.timeout(20):
-            try:
+        try:
+            async with asyncio.timeout(20):
                 await gwc.update()
-            except thingwala.geyserwala.errors.RequestError as ex:
-                raise UpdateFailed(ex) from ex
-            except Exception as ex:
-                _LOGGER.exception("GeyserwalaClientAsync.update_status")
-                raise UpdateFailed(ex) from ex
+        except thingwala.geyserwala.errors.RequestError as ex:
+            raise UpdateFailed(ex) from ex
+        except Exception as ex:
+            _LOGGER.exception("GeyserwalaClientAsync.update_status")
+            raise UpdateFailed(ex) from ex
         return gwc
 
     # session=async_get_clientsession(hass)
