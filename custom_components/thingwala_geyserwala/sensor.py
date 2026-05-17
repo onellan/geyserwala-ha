@@ -5,6 +5,7 @@
 
 from dataclasses import dataclass
 
+import voluptuous as vol
 from homeassistant.components.sensor import (
     SensorEntity,
     SensorEntityDescription,
@@ -17,8 +18,6 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-
-import voluptuous as vol
 
 from .entity import GeyserwalaEntity
 from .platform_setup import async_setup_platform_entry

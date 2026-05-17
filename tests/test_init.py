@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from custom_components.thingwala_geyserwala.__init__ import get_update_interval, _merge_custom_entities
+from custom_components.thingwala_geyserwala.__init__ import (
+    _merge_custom_entities,
+    get_update_interval,
+)
 
 
 def test_get_update_interval_uses_default_on_invalid_value() -> None:

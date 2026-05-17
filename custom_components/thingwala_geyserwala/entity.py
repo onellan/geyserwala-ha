@@ -5,8 +5,8 @@
 
 import dataclasses
 import importlib
-from collections.abc import Mapping
-from typing import Any, Iterator
+from collections.abc import Iterator, Mapping
+from typing import Any
 
 from homeassistant.helpers.entity import (
     DeviceInfo,

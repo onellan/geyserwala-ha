@@ -10,18 +10,16 @@ from homeassistant.components.select import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-
 from thingwala.geyserwala.const import (
-    GEYSERWALA_MODE_SETPOINT,
-    GEYSERWALA_MODE_TIMER,
-    GEYSERWALA_MODE_SOLAR,
     GEYSERWALA_MODE_HOLIDAY,
+    GEYSERWALA_MODE_SETPOINT,
+    GEYSERWALA_MODE_SOLAR,
     GEYSERWALA_MODE_STANDBY,
+    GEYSERWALA_MODE_TIMER,
 )
 
 from .const import DOMAIN
 from .entity import GeyserwalaEntity
-
 
 ICON_MAP = {
     "mode": {

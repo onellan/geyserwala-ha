@@ -6,23 +6,20 @@
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
 )
-
 from homeassistant.components.number import (
     NumberDeviceClass,
 )
-
 from homeassistant.components.sensor import (
     SensorDeviceClass,
 )
-
 from homeassistant.const import (
     UnitOfTemperature,
 )
 
 try:
     from thingwala.geyserwala.const import (
-        GEYSERWALA_SETPOINT_TEMP_MIN,
         GEYSERWALA_SETPOINT_TEMP_MAX,
+        GEYSERWALA_SETPOINT_TEMP_MIN,
     )
 except ModuleNotFoundError:  # pragma: no cover - lets local tests import the module.
     GEYSERWALA_SETPOINT_TEMP_MIN = 30

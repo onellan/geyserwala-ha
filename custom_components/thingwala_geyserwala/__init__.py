@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib
+import json
 from datetime import timedelta
 from typing import Any
 
@@ -35,18 +36,21 @@ except ModuleNotFoundError:  # pragma: no cover - lets local tests import the mo
     class Unauthorized(Exception):
         """Fallback exception used when the external client package is unavailable."""
 
+from .alerts import AlertEvaluator, AlertRule
 from .binary_sensor import BINARY_SENSOR_SCHEMA
 from .const import (
+    _LOGGER,
     DEFAULT_UPDATE_INTERVAL_SECONDS,
     DOMAIN,
     MIN_UPDATE_INTERVAL_SECONDS,
-    _LOGGER,
 )
 from .entities import ENTITIES
 from .number import NUMBER_SCHEMA
 from .sensor import SENSOR_SCHEMA
+from .services import async_register_services
 from .switch import SWITCH_SCHEMA
 from .text import TEXT_SCHEMA
+
 MAX_UPDATE_RETRIES = 2
 
 PLATFORMS: list[Platform] = [
@@ -90,6 +94,46 @@ def get_update_interval(entry: ConfigEntry) -> timedelta:
     return timedelta(seconds=parsed)
 
 
+def _parse_calibrations(entry: ConfigEntry) -> dict[str, Any]:
+    """Parse calibration configurations from options, supporting both dict and JSON string formats."""
+    calibrations = entry.options.get("calibrations", {})
+
+    # If calibrations_json is provided (new format from config flow), parse it
+    calibrations_json = entry.options.get("calibrations_json", "").strip()
+    if calibrations_json:
+        try:
+            parsed = json.loads(calibrations_json)
+            if isinstance(parsed, dict):
+                _LOGGER.debug("[Geyserwala] Loaded calibrations from JSON")
+                return parsed
+        except json.JSONDecodeError as err:
+            _LOGGER.warning("[Geyserwala] Invalid calibrations JSON: %s", err)
+
+    # Use dict format (backward compatibility or already converted)
+    return calibrations if isinstance(calibrations, dict) else {}
+
+
+def _parse_alert_rules(entry: ConfigEntry) -> list[AlertRule]:
+    """Parse alert rule configurations from options, supporting both list and JSON string formats."""
+    alert_rules_data = entry.options.get("alert_rules", [])
+
+    # If alert_rules_json is provided (new format from config flow), parse it
+    alert_rules_json = entry.options.get("alert_rules_json", "").strip()
+    if alert_rules_json:
+        try:
+            parsed = json.loads(alert_rules_json)
+            if isinstance(parsed, list):
+                _LOGGER.debug("[Geyserwala] Loaded %d alert rules from JSON", len(parsed))
+                return [AlertRule.from_dict(rule_data) for rule_data in parsed]
+        except (json.JSONDecodeError, ValueError, KeyError) as err:
+            _LOGGER.warning("[Geyserwala] Invalid alert rules JSON: %s", err)
+
+    # Use list format (backward compatibility or already converted)
+    if isinstance(alert_rules_data, list):
+        return [AlertRule.from_dict(rule_data) for rule_data in alert_rules_data]
+    return []
+
+
 def _merge_custom_entities(hass: HomeAssistant, config: dict[str, Any]) -> None:
     """Merge optional YAML-defined custom entities into the default entity map."""
     yaml_config = config.get(DOMAIN)
@@ -120,7 +164,7 @@ async def _async_update_status(gwc: Any, entry: ConfigEntry) -> Any:
         except Unauthorized as err:
             _LOGGER.error("[Geyserwala] Authentication failed for %s:%s", host, port)
             raise ConfigEntryAuthFailed from err
-        except (asyncio.TimeoutError, GeyserwalaException, OSError) as err:
+        except (TimeoutError, GeyserwalaException, OSError) as err:
             if attempt > MAX_UPDATE_RETRIES:
                 raise UpdateFailed(
                     f"Update failed after {MAX_UPDATE_RETRIES + 1} attempts: {err}"
@@ -164,8 +208,42 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
+    # Feature flags - determine which features are enabled
+    enable_calibration = entry.options.get("enable_calibration", False)
+    enable_alerts = entry.options.get("enable_alerts", False)
+    enable_services = entry.options.get("enable_services", True)
+
+    # Store calibration settings for this entry (only if enabled)
+    if enable_calibration:
+        calibrations = _parse_calibrations(entry)
+        _LOGGER.debug("[Geyserwala] Calibration feature enabled with %d entity calibrations", len(calibrations))
+    else:
+        calibrations = {}
+        _LOGGER.debug("[Geyserwala] Calibration feature disabled")
+
+    hass.data.setdefault(f"{DOMAIN}_calibrations", {})[entry.entry_id] = calibrations
+
+    # Set up alert evaluator for this entry (only if enabled)
+    if enable_alerts:
+        alert_evaluator = AlertEvaluator(hass)
+        hass.data.setdefault(f"{DOMAIN}_alert_evaluators", {})[entry.entry_id] = alert_evaluator
+
+        # Load alert rules from options
+        alert_rules = _parse_alert_rules(entry)
+        _LOGGER.debug("[Geyserwala] Alert feature enabled with %d rules", len(alert_rules))
+        hass.data.setdefault(f"{DOMAIN}_alert_rules", {})[entry.entry_id] = alert_rules
+    else:
+        _LOGGER.debug("[Geyserwala] Alert feature disabled")
+        hass.data.setdefault(f"{DOMAIN}_alert_evaluators", {})[entry.entry_id] = None
+        hass.data.setdefault(f"{DOMAIN}_alert_rules", {})[entry.entry_id] = []
+
     if entry.unique_id is None:
         hass.config_entries.async_update_entry(entry, unique_id=gwc.id)
+
+    # Register services only once and only if enabled (when first entry is added)
+    if enable_services and len(hass.data[DOMAIN]) == 1:
+        _LOGGER.debug("[Geyserwala] Registering custom services")
+        await async_register_services(hass)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
@@ -176,6 +254,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
+        hass.data.get(f"{DOMAIN}_calibrations", {}).pop(entry.entry_id, None)
+        hass.data.get(f"{DOMAIN}_alert_evaluators", {}).pop(entry.entry_id, None)
+        hass.data.get(f"{DOMAIN}_alert_rules", {}).pop(entry.entry_id, None)
     return unload_ok
 
 
