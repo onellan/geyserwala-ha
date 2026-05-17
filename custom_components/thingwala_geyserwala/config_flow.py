@@ -675,7 +675,7 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
 
             if errors:
                 return self.async_show_form(
-                    step_id="features",
+                    step_id="device",
                     data_schema=schema,
                     errors=errors,
                     description_placeholders={
@@ -709,7 +709,7 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
             return self.async_create_entry(title="", data=final_options)
 
         return self.async_show_form(
-            step_id="features",
+            step_id="device",
             data_schema=schema,
             description_placeholders={
                 **self._async_device_placeholders(snapshot),

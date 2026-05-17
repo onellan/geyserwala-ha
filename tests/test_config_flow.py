@@ -249,3 +249,33 @@ async def test_async_step_device_preserves_existing_secrets_and_reloads(monkeypa
     flow.hass.config_entries.async_update_entry.assert_not_called()
     flow.hass.config_entries.async_reload.assert_awaited_once_with("entry-1")
     assert "entry-1" not in flow.hass.data["_geyserwala_config_flow_state"]
+
+
+@pytest.mark.asyncio
+async def test_async_step_device_invalid_json_returns_device_step() -> None:
+    """Invalid JSON input should keep the user on a valid device options step."""
+    flow = _make_flow()
+    flow.hass.data["_geyserwala_config_flow_state"] = {
+        "entry-1": {
+            CONF_HOST: "192.168.1.105",
+            CONF_PORT: 80,
+            CONF_USERNAME: "admin",
+            CONF_PASSWORD: "existing-password",
+            "_device_snapshot": {
+                "status": "Online",
+                "wifi-ssid": "HouseWiFi",
+            },
+        }
+    }
+
+    result = await flow.async_step_device(
+        {
+            "wifi-ssid": "UpdatedWiFi",
+            "calibrations_json": "{bad-json}",
+            "alert_rules_json": "[]",
+        }
+    )
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "device"
+    assert result["errors"]["calibrations_json"] == "invalid_calibrations_json"
