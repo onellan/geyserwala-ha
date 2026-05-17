@@ -36,8 +36,7 @@ _S_APP = "\u200b\u200b\u200b\u200b\u200b\u200b"
 _S_TIME = "\u200b\u200b\u200b\u200b\u200b\u200b\u200b"
 _S_MQTT = "\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b"
 _S_NET = "\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b"
-_S_REPORT = "\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b"
-_S_QUALITY = "\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b"
+_S_REPORTQ = "\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b\u200b"
 
 ENTITIES = {
     "binary_sensor": [
@@ -80,7 +79,7 @@ ENTITIES = {
             "unit": UnitOfTemperature.CELSIUS,
         },
         {
-            "name": f"{_S_THRESH}Setpoint Maximum",
+            "name": f"{_S_THRESH}Thresholds: Setpoint Max",
             "key": "setpoint-max",
             "device_class": NumberDeviceClass.TEMPERATURE,
             "icon": "mdi:thermostat-high",
@@ -91,7 +90,7 @@ ENTITIES = {
             "unit": UnitOfTemperature.CELSIUS,
         },
         {
-            "name": f"{_S_THRESH}Differential",
+            "name": f"{_S_THRESH}\u200bThresholds: Differential",
             "key": "gw-diff",
             "device_class": None,
             "icon": "mdi:delta",
@@ -102,7 +101,7 @@ ENTITIES = {
             "unit": None,
         },
         {
-            "name": f"{_S_THRESH}Antifreeze Threshold",
+            "name": f"{_S_THRESH}\u200b\u200bThresholds: Antifreeze",
             "key": "gw-antifreeze",
             "device_class": NumberDeviceClass.TEMPERATURE,
             "icon": "mdi:snowflake-thermometer",
@@ -113,7 +112,7 @@ ENTITIES = {
             "unit": UnitOfTemperature.CELSIUS,
         },
         {
-            "name": f"{_S_THRESH}DC Maximum Temperature",
+            "name": f"{_S_THRESH}\u200b\u200b\u200bThresholds: DC Max Temp",
             "key": "dc-max-temp",
             "device_class": NumberDeviceClass.TEMPERATURE,
             "icon": "mdi:thermometer-alert",
@@ -124,7 +123,7 @@ ENTITIES = {
             "unit": UnitOfTemperature.CELSIUS,
         },
         {
-            "name": f"{_S_QUALITY}LDR Minimum",
+            "name": f"{_S_THRESH}\u200b\u200b\u200b\u200bThresholds: LDR Min",
             "key": "gw-ldr-min",
             "device_class": None,
             "icon": "mdi:brightness-5",
@@ -135,7 +134,7 @@ ENTITIES = {
             "unit": None,
         },
         {
-            "name": f"{_S_TIME}UTC Offset",
+            "name": f"{_S_TIME}Time: UTC Offset (min)",
             "key": "utc-offset",
             "device_class": None,
             "icon": "mdi:clock-time-eight-outline",
@@ -146,7 +145,7 @@ ENTITIES = {
             "unit": None,
         },
         {
-            "name": f"{_S_TIME}Port",
+            "name": f"{_S_TIME}\u200b\u200bTime: NTP Port",
             "key": "ntp-port",
             "device_class": None,
             "icon": "mdi:numeric",
@@ -157,7 +156,7 @@ ENTITIES = {
             "unit": None,
         },
         {
-            "name": f"{_S_MQTT}Port",
+            "name": f"{_S_MQTT}\u200b\u200bMQTT: Port",
             "key": "mqtt-port",
             "device_class": None,
             "icon": "mdi:numeric",
@@ -209,7 +208,7 @@ ENTITIES = {
             "visible": True,
         },
         {
-            "name": f"{_S_APP}Enabled",
+            "name": f"{_S_APP}Local App: Enable",
             "key": "app-enable",
             "icon_on": "mdi:application-cog",
             "icon_off": "mdi:application-off",
@@ -217,7 +216,7 @@ ENTITIES = {
             "entity_category": "config",
         },
         {
-            "name": f"{_S_MQTT}Enabled",
+            "name": f"{_S_MQTT}MQTT: Enable",
             "key": "mqtt-enable",
             "icon_on": "mdi:access-point-network",
             "icon_off": "mdi:access-point-network-off",
@@ -225,7 +224,7 @@ ENTITIES = {
             "entity_category": "config",
         },
         {
-            "name": f"{_S_QUALITY}Auto Update",
+            "name": f"{_S_REPORTQ}Reporting and Quality: Auto Update Firmware",
             "key": "update-auto",
             "icon_on": "mdi:update",
             "icon_off": "mdi:update-off",
@@ -233,7 +232,7 @@ ENTITIES = {
             "entity_category": "config",
         },
         {
-            "name": f"{_S_REPORT}Usage Reporting",
+            "name": f"{_S_REPORTQ}\u200bReporting and Quality: Report Usage Statistics",
             "key": "usage-reporting",
             "icon_on": "mdi:chart-line",
             "icon_off": "mdi:chart-line-variant",
@@ -261,14 +260,14 @@ ENTITIES = {
             "entity_category": "config",
         },
         {
-            "name": f"{_S_WIFI}SSID",
+            "name": f"{_S_WIFI}WiFi: Name",
             "key": "wifi-ssid",
             "icon": "mdi:wifi-cog",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": f"{_S_WIFI}Password",
+            "name": f"{_S_WIFI}WiFi: Password",
             "key": "wifi-pass",
             "icon": "mdi:form-textbox-password",
             "visible": True,
@@ -281,7 +280,7 @@ ENTITIES = {
             "entity_category": "config",
         },
         {
-            "name": f"{_S_CLOUD}Token",
+            "name": f"{_S_CLOUD}Cloud: Token",
             "key": "cloud-token",
             "icon": "mdi:cloud-lock",
             "visible": True,
@@ -294,14 +293,14 @@ ENTITIES = {
             "entity_category": "config",
         },
         {
-            "name": f"{_S_DEVICE}Name",
+            "name": f"{_S_DEVICE}Device: Name",
             "key": "name",
             "icon": "mdi:rename-box",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": f"{_S_DEVICE}Hostname",
+            "name": f"{_S_DEVICE}\u200bDevice: Hostname",
             "key": "hostname",
             "icon": "mdi:identifier",
             "visible": True,
@@ -310,19 +309,17 @@ ENTITIES = {
         {
             "name": f"{_S_THRESH}Thresholds",
             "key": "__header_40_thresholds",
-            "icon": "mdi:format-header-2",
             "visible": True,
             "entity_category": "config",
         },
         {
             "name": f"{_S_APP}Local App",
             "key": "__header_50_local_app",
-            "icon": "mdi:format-header-2",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": f"{_S_APP}Password",
+            "name": f"{_S_APP}Local App: Password",
             "key": "app-pass",
             "visible": True,
             "entity_category": "config",
@@ -334,7 +331,7 @@ ENTITIES = {
             "entity_category": "config",
         },
         {
-            "name": f"{_S_TIME}Host",
+            "name": f"{_S_TIME}\u200bTime: NTP Host",
             "key": "ntp-host",
             "visible": True,
             "entity_category": "config",
@@ -346,35 +343,35 @@ ENTITIES = {
             "entity_category": "config",
         },
         {
-            "name": f"{_S_MQTT}Host",
+            "name": f"{_S_MQTT}\u200bMQTT: Host",
             "key": "mqtt-host",
             "icon": "mdi:server",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": f"{_S_MQTT}User",
+            "name": f"{_S_MQTT}\u200b\u200b\u200bMQTT: Username",
             "key": "mqtt-user",
             "icon": "mdi:account",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": f"{_S_MQTT}Password",
+            "name": f"{_S_MQTT}\u200b\u200b\u200b\u200bMQTT: Password",
             "key": "mqtt-pass",
             "icon": "mdi:form-textbox-password",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": f"{_S_MQTT}Topic Template",
+            "name": f"{_S_MQTT}\u200b\u200b\u200b\u200b\u200bMQTT: Topic Template",
             "key": "mqtt-topic-tmpl",
             "icon": "mdi:pound",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": f"{_S_MQTT}Client ID",
+            "name": f"{_S_MQTT}\u200b\u200b\u200b\u200b\u200b\u200bMQTT: Client ID",
             "key": "mqtt-clientid",
             "icon": "mdi:identifier",
             "visible": True,
@@ -387,49 +384,43 @@ ENTITIES = {
             "entity_category": "config",
         },
         {
-            "name": f"{_S_NET}Static IP",
+            "name": f"{_S_NET}Network: Static IP",
             "key": "ip-static",
             "icon": "mdi:ip-network",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": f"{_S_NET}Netmask",
+            "name": f"{_S_NET}\u200bNetwork: Static Netmask",
             "key": "ip-netmask",
             "icon": "mdi:ip-outline",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": f"{_S_NET}Gateway",
+            "name": f"{_S_NET}\u200b\u200bNetwork: Static Gateway",
             "key": "ip-gateway",
             "icon": "mdi:router-network",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": f"{_S_NET}DNS 1",
+            "name": f"{_S_NET}\u200b\u200b\u200bNetwork: Primary DNS",
             "key": "ip-dns1",
             "icon": "mdi:dns",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": f"{_S_NET}DNS 2",
+            "name": f"{_S_NET}\u200b\u200b\u200b\u200bNetwork: Secondary DNS",
             "key": "ip-dns2",
             "icon": "mdi:dns-outline",
             "visible": True,
             "entity_category": "config",
         },
         {
-            "name": f"{_S_REPORT}Reporting",
+            "name": f"{_S_REPORTQ}Reporting and Quality",
             "key": "__header_90_reporting",
-            "visible": True,
-            "entity_category": "config",
-        },
-        {
-            "name": f"{_S_QUALITY}Quality",
-            "key": "__header_95_quality",
             "visible": True,
             "entity_category": "config",
         },
