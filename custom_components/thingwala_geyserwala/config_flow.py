@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
 import json
 from typing import Any
 
@@ -19,8 +20,38 @@ from homeassistant.helpers.aiohttp_client import (
 )
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from homeassistant.util.network import is_ipv6_address
-from thingwala.geyserwala.aio.client import GeyserwalaClientAsync
-from thingwala.geyserwala.errors import GeyserwalaException, Unauthorized
+
+try:
+    GeyserwalaClientAsync = importlib.import_module(
+        "thingwala.geyserwala.aio.client"
+    ).GeyserwalaClientAsync
+    geyserwala_errors = importlib.import_module("thingwala.geyserwala.errors")
+    GeyserwalaException = geyserwala_errors.GeyserwalaException
+    Unauthorized = geyserwala_errors.Unauthorized
+    _DEPENDENCY_AVAILABLE = True
+    _DEPENDENCY_IMPORT_ERROR: Exception | None = None
+except ModuleNotFoundError as err:  # pragma: no cover - depends on runtime package installation.
+    GeyserwalaClientAsync = Any  # type: ignore[assignment]
+
+    class GeyserwalaException(Exception):
+        """Fallback exception used when the external client package is unavailable."""
+
+    class Unauthorized(Exception):
+        """Fallback exception used when the external client package is unavailable."""
+
+    _DEPENDENCY_AVAILABLE = False
+    _DEPENDENCY_IMPORT_ERROR = err
+except Exception as err:  # pragma: no cover - defensive to avoid config flow import crashes.
+    GeyserwalaClientAsync = Any  # type: ignore[assignment]
+
+    class GeyserwalaException(Exception):
+        """Fallback exception used when the external client package fails to load."""
+
+    class Unauthorized(Exception):
+        """Fallback exception used when the external client package fails to load."""
+
+    _DEPENDENCY_AVAILABLE = False
+    _DEPENDENCY_IMPORT_ERROR = err
 
 from .const import (
     _LOGGER,
@@ -30,6 +61,8 @@ from .const import (
     DOMAIN,
     MIN_UPDATE_INTERVAL_SECONDS,
 )
+
+_DEPENDENCY_ERROR_LOGGED = False
 
 
 class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -46,6 +79,35 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Init."""
         self._config: dict[str, Any] = {}
         self._errors: dict[str, str] = {}
+
+    def _dependency_ready(self) -> bool:
+        """Check whether runtime client dependency is available for validation calls."""
+        global _DEPENDENCY_ERROR_LOGGED
+
+        if _DEPENDENCY_AVAILABLE:
+            return True
+
+        if not _DEPENDENCY_ERROR_LOGGED:
+            if isinstance(_DEPENDENCY_IMPORT_ERROR, ModuleNotFoundError):
+                _LOGGER.error(
+                    "[Geyserwala] Missing dependency 'thingwala-geyserwala' while loading config flow. "
+                    "Home Assistant should install this automatically from manifest requirements. "
+                    "Restart Home Assistant and check dependency installation logs. error=%s",
+                    _DEPENDENCY_IMPORT_ERROR,
+                )
+            else:
+                _LOGGER.error(
+                    "[Geyserwala] Failed to load dependency 'thingwala-geyserwala' while loading config flow: %r",
+                    _DEPENDENCY_IMPORT_ERROR,
+                    exc_info=_DEPENDENCY_IMPORT_ERROR,
+                )
+            _DEPENDENCY_ERROR_LOGGED = True
+
+        if isinstance(_DEPENDENCY_IMPORT_ERROR, ModuleNotFoundError):
+            self._errors["base"] = "dependency_not_installed"
+        else:
+            self._errors["base"] = "dependency_load_failed"
+        return False
 
     async def async_step_zeroconf(self, discovery_info: ZeroconfServiceInfo) -> FlowResult:
         """Handle zeroconf discovery."""
@@ -93,6 +155,9 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_validate(self) -> FlowResult:
         """Handle device validation with detailed logging."""
+        if not self._dependency_ready():
+            return await self.async_step_user()
+
         session = async_create_clientsession(self.hass)
         host = self._config[CONF_HOST]
         port = self._config[CONF_PORT]
@@ -143,6 +208,9 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="reconfigure_failed")
 
         if user_input is not None:
+            if not self._dependency_ready():
+                return await self.async_step_reconfigure()
+
             # Validate new connection settings
             session = async_create_clientsession(self.hass)
             host = user_input[CONF_HOST]
