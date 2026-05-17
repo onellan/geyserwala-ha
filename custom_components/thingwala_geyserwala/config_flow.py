@@ -297,12 +297,8 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
 
-class GeyserwalaOptionsFlow(config_entries.OptionsFlow):
+class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
     """Options flow for Geyserwala integration."""
-
-    def __init__(self, config_entry: ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Manage integration options - polling and feature selection."""
