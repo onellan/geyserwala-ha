@@ -13,6 +13,5 @@
   "requirements": ["thingwala-geyserwala==0.0.9"],
   "ssdp": [],
   "version": "0.2.0",
-  "zeroconf": ["_geyserwala._tcp.local."],
-  "diagnostics": true
+  "zeroconf": ["_geyserwala._tcp.local."]
 }

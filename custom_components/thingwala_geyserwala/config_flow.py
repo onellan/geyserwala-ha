@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Any
 
 import voluptuous as vol
@@ -286,20 +287,6 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_features(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Configure enabled features - MQTT, calibration, alerts."""
-        if user_input is not None:
-            # Merge feature configurations with base options
-            base_options = self.hass.data.get("_geyserwala_config_flow_state", {}).get(
-                self.config_entry.entry_id, {}
-            )
-            final_options = {**self.config_entry.options, **base_options, **user_input}
-
-            # Clean up temporary state
-            self.hass.data.get("_geyserwala_config_flow_state", {}).pop(
-                self.config_entry.entry_id, None
-            )
-
-            return self.async_create_entry(title="", data=final_options)
-
         # Load current feature configurations
         current_options = self.config_entry.options
         base_options = self.hass.data.get("_geyserwala_config_flow_state", {}).get(
@@ -338,6 +325,50 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlow):
             )
 
         schema = vol.Schema(schema_fields)
+
+        if user_input is not None:
+            errors: dict[str, str] = {}
+
+            calibrations_json = user_input.get("calibrations_json", "").strip()
+            if enable_calibration and calibrations_json:
+                try:
+                    parsed_calibrations = json.loads(calibrations_json)
+                    if not isinstance(parsed_calibrations, dict):
+                        errors["calibrations_json"] = "invalid_calibrations_json"
+                except json.JSONDecodeError:
+                    errors["calibrations_json"] = "invalid_calibrations_json"
+
+            alert_rules_json = user_input.get("alert_rules_json", "").strip()
+            if enable_alerts and alert_rules_json:
+                try:
+                    parsed_alert_rules = json.loads(alert_rules_json)
+                    if not isinstance(parsed_alert_rules, list):
+                        errors["alert_rules_json"] = "invalid_alert_rules_json"
+                except json.JSONDecodeError:
+                    errors["alert_rules_json"] = "invalid_alert_rules_json"
+
+            if errors:
+                return self.async_show_form(
+                    step_id="features",
+                    data_schema=schema,
+                    errors=errors,
+                    description_placeholders={
+                        "mqtt_help": "Select MQTT as transport and specify the base topic for device communication",
+                        "calibration_help": "Enter JSON with per-entity calibration settings: {\"entity_key\": {\"offset\": 0, \"multiplier\": 1}}",
+                        "alerts_help": 'Enter JSON array of alert rules: [{"rule_id": "rule1", "entity_key": "...", "condition_type": "threshold", "condition_value": 50, "severity": "warning", "message_template": "...", "enabled": true}]',
+                    },
+                )
+
+            # Merge feature configurations with base options
+            final_options = {**self.config_entry.options, **base_options, **user_input}
+
+            # Clean up temporary state
+            self.hass.data.get("_geyserwala_config_flow_state", {}).pop(
+                self.config_entry.entry_id, None
+            )
+
+            return self.async_create_entry(title="", data=final_options)
+
         return self.async_show_form(
             step_id="features",
             data_schema=schema,

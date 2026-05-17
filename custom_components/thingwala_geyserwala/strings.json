@@ -53,11 +53,11 @@
           "calibrations_json": "Sensor Calibrations - JSON with per-entity calibration settings",
           "alert_rules_json": "Alert Rules - JSON array of alert rule definitions"
         }
+      },
+      "error": {
+        "invalid_calibrations_json": "Invalid calibrations JSON format",
+        "invalid_alert_rules_json": "Invalid alert rules JSON format"
       }
     }
-  },
-  "options_error": {
-    "invalid_calibrations_json": "Invalid calibrations JSON format",
-    "invalid_alert_rules_json": "Invalid alert rules JSON format"
   }
 }
