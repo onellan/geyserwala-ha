@@ -23,7 +23,10 @@ from homeassistant.helpers.aiohttp_client import (
 try:
     from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 except ModuleNotFoundError:  # pragma: no cover - compatibility with older Home Assistant builds.
-    from homeassistant.components.zeroconf import ZeroconfServiceInfo
+    try:
+        from homeassistant.components.zeroconf import ZeroconfServiceInfo
+    except ModuleNotFoundError:
+        ZeroconfServiceInfo = Any  # type: ignore[assignment]
 
 from homeassistant.util.network import is_ipv6_address
 
