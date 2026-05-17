@@ -5,13 +5,13 @@
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/thingwala/geyserwala-ha/blob/main/README.md",
-  "homeassistant": "2025.1",
+  "homeassistant": "2025.1.4",
   "homekit": {},
   "integration_type": "device",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/thingwala/geyserwala-ha/issues",
   "requirements": ["thingwala-geyserwala==0.0.9"] ,
   "ssdp": [],
-  "version": "0.0.9",
+  "version": "0.1.0",
   "zeroconf": ["_geyserwala._tcp.local."]
 }

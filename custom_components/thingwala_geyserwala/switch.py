@@ -21,8 +21,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 import voluptuous as vol
 
-from .const import DOMAIN
-from .entity import GeyserwalaEntity, gen_entity_dataclasses
+from .entity import GeyserwalaEntity
+from .platform_setup import async_setup_platform_entry
 
 SWITCH_SCHEMA = vol.Schema({
     vol.Required(CONF_NAME): cv.string,
@@ -49,35 +49,24 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Geyserwala switch entities."""
-
-    entity_domain = 'switch'
-    switches = []
-    switch_map = {}
-
-    entities = hass.data.get(DOMAIN + '_ENTITIES')
-    for dc in gen_entity_dataclasses(entities, entity_domain, Switch):
-        switches.append(dc)
-        switch_map[dc.key] = dc
-
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    async_add_entities(
-        GeyserwalaSwitch(
-            hass, entity_domain,
-            coordinator,
-            SwitchEntityDescription(
-                key=item.key,
-                has_entity_name=True,
-                name=item.name,
-                entity_category=None,
-                device_class=SwitchDeviceClass.SWITCH,
-                entity_registry_visible_default=item.visible,
-                entity_registry_enabled_default=True,
-            ),
-            item.key,
-            switch_map
-        )
-        for item in switches
+    """Set up Geyserwala switch entities using generic helper."""
+    await async_setup_platform_entry(
+        hass=hass,
+        config_entry=config_entry,
+        async_add_entities=async_add_entities,
+        entity_domain='switch',
+        dc_class=Switch,
+        entity_class=GeyserwalaSwitch,
+        description_factory=lambda item: SwitchEntityDescription(
+            key=item.key,
+            has_entity_name=True,
+            name=item.name,
+            entity_category=None,
+            device_class=SwitchDeviceClass.SWITCH,
+            entity_registry_visible_default=item.visible,
+            entity_registry_enabled_default=True,
+        ),
+        entity_map={},
     )
 
 
@@ -103,6 +92,9 @@ class GeyserwalaSwitch(GeyserwalaEntity, SwitchEntity):
     @property
     def icon(self) -> str:
         """Icon."""
+        mapped = self._switch_map.get(self._gw_key)
+        if mapped is None:
+            return "mdi:toggle-switch"
         if self.is_on:
-            return self._switch_map[self._gw_key].icon_on
-        return self._switch_map[self._gw_key].icon_off
+            return mapped.icon_on
+        return mapped.icon_off

@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD025 MD040 MD059 -->
 Geyserwala - Home Assistant Integration <!-- omit in toc -->
 ===
 
@@ -91,6 +92,48 @@ thingwala_geyserwala:
 ```
 
 Entity types `binary_sensor`, `number`, `sensor`, `switch` and `text` are supported. The schema for each type is defined in the Python file of the same name in the source.
+
+# Polling Interval Options
+The integration includes an options flow to tune polling in Home Assistant:
+
+* Go to "**Settings**" -> "**Devices & Services**".
+* Open your Geyserwala integration card and select "**Configure**".
+* Set "**Update interval (seconds)**".
+
+Notes:
+* The integration enforces a safe minimum interval of 5 seconds.
+* The default interval is 10 seconds.
+
+# Reliability and Performance Notes
+This integration uses Home Assistant's `DataUpdateCoordinator` with production-focused behavior:
+
+* Bounded retries with small exponential-style backoff during transient failures.
+* Timeout protection for network I/O.
+* Authentication failure escalation for config-entry reauth handling.
+* Safer entity setup and icon fallback behavior for custom/unknown device values.
+
+# Troubleshooting
+If entities stop updating or appear unavailable:
+
+* Check Home Assistant logs: **Settings** -> **System** -> **Logs**.
+* Verify host/port/credentials in integration settings.
+* Increase polling interval via options if your network is congested.
+* Run "**Check configuration**" and restart Home Assistant.
+
+# Development and CI
+Local quality commands:
+
+```bash
+make setup
+make check
+make test
+```
+
+CI runs on GitHub Actions and includes:
+
+* `hassfest` and HACS validation.
+* Python linting (`ruff`).
+* Unit tests (`pytest`).
 
 # Contribution
 Yes please! We want our Geyserwala integration with Home Assistant to be the best it can be for everyone. If you have Home Assistant development experience or have just noticed a niggly bug, feel free to fork this repo and submit a pull request.

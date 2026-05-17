@@ -40,28 +40,16 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Geyserwala select entities."""
-    entity_domain = 'select'
-
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
-
-    async_add_entities(
-        [GeyserwalaSelect(
-            hass, entity_domain,
-            coordinator,
-            SelectEntityDescription(
-                key="mode",
-                has_entity_name=True,
-                name="Mode",
-                entity_category=None,
-                device_class=None,
-                options=coordinator.data.modes,
-                unit_of_measurement=None,
-                entity_registry_visible_default=True,
-                entity_registry_enabled_default=True,
-            ),
-            "mode",
-        )]
+    description = SelectEntityDescription(
+        key="mode",
+        has_entity_name=True,
+        name="Mode",
+        options=coordinator.data.modes,
+        entity_registry_visible_default=True,
+        entity_registry_enabled_default=True,
     )
+    async_add_entities([GeyserwalaSelect(hass, "select", coordinator, description, "mode")])
 
 
 class GeyserwalaSelect(GeyserwalaEntity, SelectEntity):
@@ -79,4 +67,4 @@ class GeyserwalaSelect(GeyserwalaEntity, SelectEntity):
     @property
     def icon(self) -> str:
         """Icon."""
-        return ICON_MAP[self._gw_key][self.current_option]
+        return ICON_MAP.get(self._gw_key, {}).get(self.current_option, "mdi:select")

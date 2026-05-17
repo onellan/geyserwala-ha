@@ -19,10 +19,14 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 
-from thingwala.geyserwala.const import (
-    GEYSERWALA_SETPOINT_TEMP_MIN,
-    GEYSERWALA_SETPOINT_TEMP_MAX,
-)
+try:
+    from thingwala.geyserwala.const import (
+        GEYSERWALA_SETPOINT_TEMP_MIN,
+        GEYSERWALA_SETPOINT_TEMP_MAX,
+    )
+except ModuleNotFoundError:  # pragma: no cover - lets local tests import the module.
+    GEYSERWALA_SETPOINT_TEMP_MIN = 30
+    GEYSERWALA_SETPOINT_TEMP_MAX = 80
 
 ENTITIES = {
     "binary_sensor": [

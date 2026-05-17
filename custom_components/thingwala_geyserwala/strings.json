@@ -18,5 +18,15 @@
         }
       }
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Polling settings",
+        "data": {
+          "update_interval": "Update interval (seconds)"
+        }
+      }
+    }
   }
 }

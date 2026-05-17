@@ -10,11 +10,23 @@ from homeassistant.components.text import (
     TextEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+import voluptuous as vol
 
-from .const import DOMAIN
-from .entity import GeyserwalaEntity, gen_entity_dataclasses
+from .entity import GeyserwalaEntity
+from .platform_setup import async_setup_platform_entry
+
+TEXT_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_NAME): cv.string,
+        vol.Required("key"): cv.string,
+        vol.Optional("icon", default="mdi:form-textbox"): cv.string,
+        vol.Optional("visible", default=False): cv.boolean,
+    }
+)
 
 
 @dataclass
@@ -32,33 +44,22 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Geyserwala text entities."""
-
-    entity_domain = 'text'
-    texts = []
-
-    entities = hass.data.get(DOMAIN + '_ENTITIES')
-    for dc in gen_entity_dataclasses(entities, entity_domain, Text):
-        texts.append(dc)
-
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    async_add_entities(
-        GeyserwalaText(
-            hass, entity_domain,
-            coordinator,
-            TextEntityDescription(
-                key=item.key,
-                has_entity_name=True,
-                name=item.name,
-                entity_category=None,
-                icon=item.icon,
-                entity_registry_visible_default=item.visible,
-                # entity_registry_enabled_default=False,
-                # native_max=0,
-            ),
-            item.key,
-        )
-        for item in texts
+    """Set up Geyserwala text entities using generic helper."""
+    await async_setup_platform_entry(
+        hass=hass,
+        config_entry=config_entry,
+        async_add_entities=async_add_entities,
+        entity_domain='text',
+        dc_class=Text,
+        entity_class=GeyserwalaText,
+        description_factory=lambda item: TextEntityDescription(
+            key=item.key,
+            has_entity_name=True,
+            name=item.name,
+            entity_category=None,
+            icon=item.icon,
+            entity_registry_visible_default=item.visible,
+        ),
     )
 
 

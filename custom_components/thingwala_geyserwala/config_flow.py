@@ -3,11 +3,15 @@
 ####################################################################################
 """Geyserwala config flow."""
 
-from typing import Any, Dict
+from __future__ import annotations
+
+import asyncio
+from typing import Any
 
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_IP_ADDRESS, CONF_HOST, CONF_PORT, CONF_USERNAME, CONF_PASSWORD
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import (
@@ -19,7 +23,14 @@ from homeassistant.util.network import is_ipv6_address
 from thingwala.geyserwala.aio.client import GeyserwalaClientAsync
 from thingwala.geyserwala.errors import GeyserwalaException, Unauthorized
 
-from .const import DOMAIN, DEFAULT_PORT, DEFAULT_USERNAME
+from .const import (
+    DEFAULT_PORT,
+    DEFAULT_UPDATE_INTERVAL_SECONDS,
+    DEFAULT_USERNAME,
+    DOMAIN,
+    MIN_UPDATE_INTERVAL_SECONDS,
+    _LOGGER,
+)
 
 
 class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -27,10 +38,15 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    @staticmethod
+    def async_get_options_flow(config_entry: ConfigEntry) -> GeyserwalaOptionsFlow:
+        """Return the options flow handler."""
+        return GeyserwalaOptionsFlow(config_entry)
+
     def __init__(self) -> None:
         """Init."""
-        self._config: Dict[str, Any] = {}
-        self._errors: Dict[str, str] = {}
+        self._config: dict[str, Any] = {}
+        self._errors: dict[str, str] = {}
 
     async def async_step_zeroconf(self, discovery_info: ZeroconfServiceInfo) -> FlowResult:
         """Handle zeroconf discovery."""
@@ -50,7 +66,7 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         })
         return await self.async_step_user()
 
-    async def async_step_user(self, user_input=None) -> FlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Handle user input."""
         if user_input is not None:
             self._async_abort_entries_match(
@@ -78,7 +94,6 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_validate(self) -> FlowResult:
         """Handle device validation with detailed logging."""
-        from .const import _LOGGER
         session = async_create_clientsession(self.hass)
         host = self._config[CONF_HOST]
         port = self._config[CONF_PORT]
@@ -91,7 +106,9 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                     session=session,
                                     )
         try:
-            if not await api.update():
+            async with asyncio.timeout(20):
+                connected = await api.update()
+            if not connected:
                 _LOGGER.error("[Geyserwala] Device unreachable at %s:%s", host, port)
                 return self.async_abort(reason="unreachable")
         except Unauthorized as ex:
@@ -100,6 +117,10 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return await self.async_step_user()
         except GeyserwalaException as ex:
             _LOGGER.error("[Geyserwala] Cannot connect to %s:%s - %s", host, port, ex)
+            self._errors['base'] = 'cannot_connect'
+            return await self.async_step_user()
+        except asyncio.TimeoutError:
+            _LOGGER.error("[Geyserwala] Timeout while validating %s:%s", host, port)
             self._errors['base'] = 'cannot_connect'
             return await self.async_step_user()
         except Exception:
@@ -115,3 +136,29 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             title=self._config['name'],
             data=self._config
         )
+
+
+class GeyserwalaOptionsFlow(config_entries.OptionsFlow):
+    """Options flow for Geyserwala integration."""
+
+    def __init__(self, config_entry: ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        """Manage integration options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        default_interval = self.config_entry.options.get(
+            "update_interval", DEFAULT_UPDATE_INTERVAL_SECONDS
+        )
+        schema = vol.Schema(
+            {
+                vol.Required("update_interval", default=default_interval): vol.All(
+                    vol.Coerce(int),
+                    vol.Range(min=MIN_UPDATE_INTERVAL_SECONDS, max=600),
+                )
+            }
+        )
+        return self.async_show_form(step_id="init", data_schema=schema)

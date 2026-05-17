@@ -19,8 +19,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 import voluptuous as vol
 
-from .const import DOMAIN
-from .entity import GeyserwalaEntity, gen_entity_dataclasses
+from .entity import GeyserwalaEntity
+from .platform_setup import async_setup_platform_entry
 
 NUMBER_SCHEMA = vol.Schema({
     vol.Required(CONF_NAME): cv.string,
@@ -53,37 +53,28 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Geyserwala number entities."""
-
-    entity_domain = 'number'
-    numbers = []
-
-    entities = hass.data.get(DOMAIN + '_ENTITIES')
-    for dc in gen_entity_dataclasses(entities, entity_domain, Number):
-        numbers.append(dc)
-
-    coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    async_add_entities(
-        GeyserwalaNumber(
-            hass, entity_domain,
-            coordinator,
-            NumberEntityDescription(
-                key=item.key,
-                has_entity_name=True,
-                name=item.name,
-                entity_category=None,
-                device_class=item.device_class,
-                native_min_value=item.min,
-                native_max_value=item.max,
-                native_step=1,
-                native_unit_of_measurement=item.unit,
-                icon=item.icon,
-                entity_registry_visible_default=item.visible,
-                entity_registry_enabled_default=True,
-            ),
-            item.key,
-        )
-        for item in numbers
+    """Set up Geyserwala number entities using generic helper."""
+    await async_setup_platform_entry(
+        hass=hass,
+        config_entry=config_entry,
+        async_add_entities=async_add_entities,
+        entity_domain='number',
+        dc_class=Number,
+        entity_class=GeyserwalaNumber,
+        description_factory=lambda item: NumberEntityDescription(
+            key=item.key,
+            has_entity_name=True,
+            name=item.name,
+            entity_category=None,
+            device_class=item.device_class,
+            native_min_value=item.min,
+            native_max_value=item.max,
+            native_step=1,
+            native_unit_of_measurement=item.unit,
+            icon=item.icon,
+            entity_registry_visible_default=item.visible,
+            entity_registry_enabled_default=True,
+        ),
     )
 
 
