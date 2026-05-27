@@ -161,9 +161,7 @@ class AlertEvaluator:
         # Trigger if state changed to the target value
         return previous_value != rule.condition_value and current_value == rule.condition_value
 
-    def _create_alert(
-        self, rule: AlertRule, data: dict[str, Any]
-    ) -> dict[str, Any] | None:
+    def _create_alert(self, rule: AlertRule, data: dict[str, Any]) -> dict[str, Any] | None:
         """Create alert dict from rule."""
         try:
             message = rule.message_template.format(**data)

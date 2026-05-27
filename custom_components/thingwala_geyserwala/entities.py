@@ -240,12 +240,12 @@ ENTITIES = {
             "entity_category": "config",
         },
     ],
-    'text': [
+    "text": [
         {
-            'name': "Status",
-            'key': "status",
-            'icon': "mdi:information-outline",
-            'visible': True,
+            "name": "Status",
+            "key": "status",
+            "icon": "mdi:information-outline",
+            "visible": True,
         },
         {
             "name": f"{_S_CFG}Configuration",

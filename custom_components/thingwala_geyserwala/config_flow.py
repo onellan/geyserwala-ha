@@ -13,7 +13,7 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
 from homeassistant.const import CONF_HOST, CONF_IP_ADDRESS, CONF_PASSWORD, CONF_PORT, CONF_USERNAME
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import (
@@ -22,11 +22,8 @@ from homeassistant.helpers.aiohttp_client import (
 
 try:
     from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
-except ModuleNotFoundError:  # pragma: no cover - compatibility with older Home Assistant builds.
-    try:
-        from homeassistant.components.zeroconf import ZeroconfServiceInfo
-    except ModuleNotFoundError:
-        ZeroconfServiceInfo = Any  # type: ignore[assignment]
+except ImportError:  # pragma: no cover - fallback for very old Home Assistant builds.
+    ZeroconfServiceInfo = Any  # type: ignore[assignment]
 
 from homeassistant.util.network import is_ipv6_address
 
@@ -164,7 +161,9 @@ def _secret_default(current_value: Any, fallback: str = "") -> str:
     return str(current_value)
 
 
-def _device_option_value(device_data: dict[str, Any], options: dict[str, Any], key: str, fallback: Any) -> Any:
+def _device_option_value(
+    device_data: dict[str, Any], options: dict[str, Any], key: str, fallback: Any
+) -> Any:
     """Prefer stored option values, then live device data, then fallback."""
     if key in options and options[key] not in (None, ""):
         return options[key]
@@ -181,12 +180,7 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     def async_get_options_flow(config_entry: ConfigEntry) -> GeyserwalaOptionsFlow:
         """Return the options flow handler."""
-        try:
-            return GeyserwalaOptionsFlow(config_entry)
-        except TypeError:
-            # Compatibility with Home Assistant builds where
-            # OptionsFlowWithConfigEntry takes no constructor args.
-            return GeyserwalaOptionsFlow()
+        return GeyserwalaOptionsFlow()
 
     def __init__(self) -> None:
         """Init."""
@@ -222,7 +216,7 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._errors["base"] = "dependency_load_failed"
         return False
 
-    async def async_step_zeroconf(self, discovery_info: ZeroconfServiceInfo) -> FlowResult:
+    async def async_step_zeroconf(self, discovery_info: ZeroconfServiceInfo) -> ConfigFlowResult:
         """Handle zeroconf discovery."""
         properties = discovery_info.properties
         ip_address = discovery_info.host
@@ -232,15 +226,17 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         uuid = properties["id"]
         await self.async_set_unique_id(uuid)
         self._abort_if_unique_id_configured(updates={CONF_IP_ADDRESS: ip_address, CONF_PORT: port})
-        self._config.update({
-            CONF_HOST: ip_address,
-            CONF_PORT: port,
-            CONF_USERNAME: None,
-            CONF_PASSWORD: None,
-        })
+        self._config.update(
+            {
+                CONF_HOST: ip_address,
+                CONF_PORT: port,
+                CONF_USERNAME: None,
+                CONF_PASSWORD: None,
+            }
+        )
         return await self.async_step_user()
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle user input."""
         if user_input is not None:
             self._async_abort_entries_match(
@@ -254,19 +250,22 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         data_schema = vol.Schema(
             {
-                vol.Required(CONF_HOST, default=self._config.get(CONF_HOST, '')): str,
+                vol.Required(CONF_HOST, default=self._config.get(CONF_HOST, "")): str,
                 vol.Required(CONF_PORT, default=self._config.get(CONF_PORT, DEFAULT_PORT)): int,
-                vol.Required(CONF_USERNAME, default=self._config.get(CONF_USERNAME, None) or DEFAULT_USERNAME): str,
+                vol.Required(
+                    CONF_USERNAME, default=self._config.get(CONF_USERNAME, None) or DEFAULT_USERNAME
+                ): str,
                 vol.Optional(CONF_PASSWORD, default=""): str,
             }
         )
 
-        return self.async_show_form(step_id="user",
-                                    data_schema=data_schema,
-                                    errors=self._errors,
-                                    )
+        return self.async_show_form(
+            step_id="user",
+            data_schema=data_schema,
+            errors=self._errors,
+        )
 
-    async def async_step_validate(self) -> FlowResult:
+    async def async_step_validate(self) -> ConfigFlowResult:
         """Handle device validation with detailed logging."""
         if not self._dependency_ready():
             return await self.async_step_user()
@@ -275,13 +274,16 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         host = self._config[CONF_HOST]
         port = self._config[CONF_PORT]
         username = self._config[CONF_USERNAME]
-        _LOGGER.debug("[Geyserwala] Starting validation for host=%s port=%s username=%s", host, port, username)
-        api = GeyserwalaClientAsync(host=host,
-                                    port=port,
-                                    username=username,
-                                    password=self._config[CONF_PASSWORD],
-                                    session=session,
-                                    )
+        _LOGGER.debug(
+            "[Geyserwala] Starting validation for host=%s port=%s username=%s", host, port, username
+        )
+        api = GeyserwalaClientAsync(
+            host=host,
+            port=port,
+            username=username,
+            password=self._config[CONF_PASSWORD],
+            session=session,
+        )
         try:
             async with asyncio.timeout(20):
                 connected = await api.update()
@@ -290,31 +292,32 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_abort(reason="unreachable")
         except Unauthorized as ex:
             _LOGGER.error("[Geyserwala] Unauthorized for %s:%s - %s", host, port, ex)
-            self._errors['base'] = 'invalid_auth'
+            self._errors["base"] = "invalid_auth"
             return await self.async_step_user()
         except GeyserwalaException as ex:
             _LOGGER.error("[Geyserwala] Cannot connect to %s:%s - %s", host, port, ex)
-            self._errors['base'] = 'cannot_connect'
+            self._errors["base"] = "cannot_connect"
             return await self.async_step_user()
         except TimeoutError:
             _LOGGER.error("[Geyserwala] Timeout while validating %s:%s", host, port)
-            self._errors['base'] = 'cannot_connect'
+            self._errors["base"] = "cannot_connect"
             return await self.async_step_user()
         except Exception:
-            _LOGGER.exception("[Geyserwala] Unexpected error during validation for %s:%s", host, port)
-            self._errors['base'] = 'cannot_connect'
+            _LOGGER.exception(
+                "[Geyserwala] Unexpected error during validation for %s:%s", host, port
+            )
+            self._errors["base"] = "cannot_connect"
             return await self.async_step_user()
-        self._config['id'] = api.id
-        self._config['name'] = api.name
-        self._config['hostname'] = api.hostname
+        self._config["id"] = api.id
+        self._config["name"] = api.name
+        self._config["hostname"] = api.hostname
 
         _LOGGER.info("[Geyserwala] Successfully validated device at %s:%s", host, port)
-        return self.async_create_entry(
-            title=self._config['name'],
-            data=self._config
-        )
+        return self.async_create_entry(title=self._config["name"], data=self._config)
 
-    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Handle reconfiguration of device connection settings."""
         config_entry = self.hass.config_entries.async_get_entry(self.context["entry_id"])
         if config_entry is None:
@@ -333,7 +336,9 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             _LOGGER.debug(
                 "[Geyserwala] Starting reconfiguration validation for host=%s port=%s username=%s",
-                host, port, username
+                host,
+                port,
+                username,
             )
 
             api = GeyserwalaClientAsync(
@@ -352,22 +357,23 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     return self.async_abort(reason="unreachable")
             except Unauthorized as ex:
                 _LOGGER.error("[Geyserwala] Unauthorized for %s:%s - %s", host, port, ex)
-                self._errors['base'] = 'invalid_auth'
+                self._errors["base"] = "invalid_auth"
                 return await self.async_step_reconfigure()
             except GeyserwalaException as ex:
                 _LOGGER.error("[Geyserwala] Cannot connect to %s:%s - %s", host, port, ex)
-                self._errors['base'] = 'cannot_connect'
+                self._errors["base"] = "cannot_connect"
                 return await self.async_step_reconfigure()
             except TimeoutError:
                 _LOGGER.error("[Geyserwala] Timeout while validating %s:%s", host, port)
-                self._errors['base'] = 'cannot_connect'
+                self._errors["base"] = "cannot_connect"
                 return await self.async_step_reconfigure()
             except Exception:
                 _LOGGER.exception(
                     "[Geyserwala] Unexpected error during reconfiguration validation for %s:%s",
-                    host, port
+                    host,
+                    port,
                 )
-                self._errors['base'] = 'cannot_connect'
+                self._errors["base"] = "cannot_connect"
                 return await self.async_step_reconfigure()
 
             # Validation successful - update config entry
@@ -376,9 +382,9 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 CONF_PORT: port,
                 CONF_USERNAME: username,
                 CONF_PASSWORD: password,
-                'id': api.id,
-                'name': api.name,
-                'hostname': api.hostname,
+                "id": api.id,
+                "name": api.name,
+                "hostname": api.hostname,
             }
             self.hass.config_entries.async_update_entry(config_entry, data=new_data)
             await self.hass.config_entries.async_reload(config_entry.entry_id)
@@ -386,10 +392,10 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="reconfigure_successful")
 
         # Load current configuration
-        current_host = config_entry.data.get(CONF_HOST, '')
+        current_host = config_entry.data.get(CONF_HOST, "")
         current_port = config_entry.data.get(CONF_PORT, DEFAULT_PORT)
         current_username = config_entry.data.get(CONF_USERNAME, DEFAULT_USERNAME)
-        current_password = config_entry.data.get(CONF_PASSWORD, '')
+        current_password = config_entry.data.get(CONF_PASSWORD, "")
 
         data_schema = vol.Schema(
             {
@@ -405,12 +411,12 @@ class GeyserwalaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=data_schema,
             errors=self._errors,
             description_placeholders={
-                "device_name": config_entry.data.get('name', 'Geyserwala'),
+                "device_name": config_entry.data.get("name", "Geyserwala"),
             },
         )
 
 
-class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
+class GeyserwalaOptionsFlow(config_entries.OptionsFlow):
     """Options flow for Geyserwala integration."""
 
     async def _async_validate_connection(
@@ -504,38 +510,162 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
         """Build the full device settings schema."""
         return vol.Schema(
             {
-                vol.Optional("wifi-ssid", default=_device_option_value(snapshot, options, "wifi-ssid", "")): str,
-                vol.Optional("wifi-pass", default=_secret_default(options.get("wifi-pass"), snapshot.get("wifi-pass", ""))): str,
-                vol.Optional("cloud-token", default=_secret_default(options.get("cloud-token"), snapshot.get("cloud-token", ""))): str,
-                vol.Optional("name", default=_device_option_value(snapshot, options, "name", self.config_entry.data.get(CONF_HOST, "Geyserwala"))): str,
-                vol.Optional("hostname", default=_device_option_value(snapshot, options, "hostname", self.config_entry.data.get(CONF_HOST, ""))): str,
-                vol.Optional("setpoint-max", default=_coerce_int(_device_option_value(snapshot, options, "setpoint-max", 55), 55)): vol.All(vol.Coerce(int), vol.Range(min=30, max=80)),
-                vol.Optional("gw-diff", default=_coerce_int(_device_option_value(snapshot, options, "gw-diff", 7), 7)): vol.All(vol.Coerce(int), vol.Range(min=1, max=30)),
-                vol.Optional("gw-antifreeze", default=_coerce_int(_device_option_value(snapshot, options, "gw-antifreeze", 10), 10)): vol.All(vol.Coerce(int), vol.Range(min=0, max=30)),
-                vol.Optional("dc-max-temp", default=_coerce_int(_device_option_value(snapshot, options, "dc-max-temp", 60), 60)): vol.All(vol.Coerce(int), vol.Range(min=30, max=90)),
-                vol.Optional("gw-ldr-min", default=_coerce_int(_device_option_value(snapshot, options, "gw-ldr-min", 0), 0)): vol.All(vol.Coerce(int), vol.Range(min=0, max=1000)),
-                vol.Optional("app-enable", default=_coerce_bool(_device_option_value(snapshot, options, "app-enable", False))): bool,
-                vol.Optional("app-pass", default=_secret_default(options.get("app-pass"), snapshot.get("app-pass", ""))): str,
-                vol.Optional("utc-offset", default=_coerce_int(_device_option_value(snapshot, options, "utc-offset", 0), 0)): vol.All(vol.Coerce(int), vol.Range(min=-720, max=840)),
-                vol.Optional("ntp-host", default=_device_option_value(snapshot, options, "ntp-host", "pool.ntp.org")): str,
-                vol.Optional("ntp-port", default=_coerce_int(_device_option_value(snapshot, options, "ntp-port", 123), 123)): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
-                vol.Optional("mqtt-enable", default=_coerce_bool(_device_option_value(snapshot, options, "mqtt-enable", False))): bool,
-                vol.Optional("mqtt-host", default=_device_option_value(snapshot, options, "mqtt-host", "")): str,
-                vol.Optional("mqtt-port", default=_coerce_int(_device_option_value(snapshot, options, "mqtt-port", 1883), 1883)): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
-                vol.Optional("mqtt-user", default=_device_option_value(snapshot, options, "mqtt-user", "")): str,
-                vol.Optional("mqtt-pass", default=_secret_default(options.get("mqtt-pass"), snapshot.get("mqtt-pass", ""))): str,
-                vol.Optional("mqtt-topic-tmpl", default=_device_option_value(snapshot, options, "mqtt-topic-tmpl", "geyserwala/%prefix%/%mac%")): str,
-                vol.Optional("mqtt-clientid", default=_device_option_value(snapshot, options, "mqtt-clientid", "geyserwala-%mac%")): str,
-                vol.Optional("ip-static", default=_device_option_value(snapshot, options, "ip-static", "")): str,
-                vol.Optional("ip-netmask", default=_device_option_value(snapshot, options, "ip-netmask", "")): str,
-                vol.Optional("ip-gateway", default=_device_option_value(snapshot, options, "ip-gateway", "")): str,
-                vol.Optional("ip-dns1", default=_device_option_value(snapshot, options, "ip-dns1", "")): str,
-                vol.Optional("ip-dns2", default=_device_option_value(snapshot, options, "ip-dns2", "")): str,
-                vol.Optional("update-auto", default=_coerce_bool(_device_option_value(snapshot, options, "update-auto", False))): bool,
-                vol.Optional("usage-reporting", default=_coerce_bool(_device_option_value(snapshot, options, "usage-reporting", False))): bool,
-                vol.Optional("transport", default=options.get("transport", "http")): vol.In(["http", "mqtt"]),
-                vol.Optional("mqtt_base_topic", default=options.get("mqtt_base_topic", "geyserwala")): str,
-                vol.Optional("calibrations_json", default=options.get("calibrations_json", "")): str,
+                vol.Optional(
+                    "wifi-ssid", default=_device_option_value(snapshot, options, "wifi-ssid", "")
+                ): str,
+                vol.Optional(
+                    "wifi-pass",
+                    default=_secret_default(
+                        options.get("wifi-pass"), snapshot.get("wifi-pass", "")
+                    ),
+                ): str,
+                vol.Optional(
+                    "cloud-token",
+                    default=_secret_default(
+                        options.get("cloud-token"), snapshot.get("cloud-token", "")
+                    ),
+                ): str,
+                vol.Optional(
+                    "name",
+                    default=_device_option_value(
+                        snapshot,
+                        options,
+                        "name",
+                        self.config_entry.data.get(CONF_HOST, "Geyserwala"),
+                    ),
+                ): str,
+                vol.Optional(
+                    "hostname",
+                    default=_device_option_value(
+                        snapshot, options, "hostname", self.config_entry.data.get(CONF_HOST, "")
+                    ),
+                ): str,
+                vol.Optional(
+                    "setpoint-max",
+                    default=_coerce_int(
+                        _device_option_value(snapshot, options, "setpoint-max", 55), 55
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=30, max=80)),
+                vol.Optional(
+                    "gw-diff",
+                    default=_coerce_int(_device_option_value(snapshot, options, "gw-diff", 7), 7),
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=30)),
+                vol.Optional(
+                    "gw-antifreeze",
+                    default=_coerce_int(
+                        _device_option_value(snapshot, options, "gw-antifreeze", 10), 10
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=30)),
+                vol.Optional(
+                    "dc-max-temp",
+                    default=_coerce_int(
+                        _device_option_value(snapshot, options, "dc-max-temp", 60), 60
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=30, max=90)),
+                vol.Optional(
+                    "gw-ldr-min",
+                    default=_coerce_int(
+                        _device_option_value(snapshot, options, "gw-ldr-min", 0), 0
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=1000)),
+                vol.Optional(
+                    "app-enable",
+                    default=_coerce_bool(
+                        _device_option_value(snapshot, options, "app-enable", False)
+                    ),
+                ): bool,
+                vol.Optional(
+                    "app-pass",
+                    default=_secret_default(options.get("app-pass"), snapshot.get("app-pass", "")),
+                ): str,
+                vol.Optional(
+                    "utc-offset",
+                    default=_coerce_int(
+                        _device_option_value(snapshot, options, "utc-offset", 0), 0
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=-720, max=840)),
+                vol.Optional(
+                    "ntp-host",
+                    default=_device_option_value(snapshot, options, "ntp-host", "pool.ntp.org"),
+                ): str,
+                vol.Optional(
+                    "ntp-port",
+                    default=_coerce_int(
+                        _device_option_value(snapshot, options, "ntp-port", 123), 123
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
+                vol.Optional(
+                    "mqtt-enable",
+                    default=_coerce_bool(
+                        _device_option_value(snapshot, options, "mqtt-enable", False)
+                    ),
+                ): bool,
+                vol.Optional(
+                    "mqtt-host", default=_device_option_value(snapshot, options, "mqtt-host", "")
+                ): str,
+                vol.Optional(
+                    "mqtt-port",
+                    default=_coerce_int(
+                        _device_option_value(snapshot, options, "mqtt-port", 1883), 1883
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
+                vol.Optional(
+                    "mqtt-user", default=_device_option_value(snapshot, options, "mqtt-user", "")
+                ): str,
+                vol.Optional(
+                    "mqtt-pass",
+                    default=_secret_default(
+                        options.get("mqtt-pass"), snapshot.get("mqtt-pass", "")
+                    ),
+                ): str,
+                vol.Optional(
+                    "mqtt-topic-tmpl",
+                    default=_device_option_value(
+                        snapshot, options, "mqtt-topic-tmpl", "geyserwala/%prefix%/%mac%"
+                    ),
+                ): str,
+                vol.Optional(
+                    "mqtt-clientid",
+                    default=_device_option_value(
+                        snapshot, options, "mqtt-clientid", "geyserwala-%mac%"
+                    ),
+                ): str,
+                vol.Optional(
+                    "ip-static", default=_device_option_value(snapshot, options, "ip-static", "")
+                ): str,
+                vol.Optional(
+                    "ip-netmask", default=_device_option_value(snapshot, options, "ip-netmask", "")
+                ): str,
+                vol.Optional(
+                    "ip-gateway", default=_device_option_value(snapshot, options, "ip-gateway", "")
+                ): str,
+                vol.Optional(
+                    "ip-dns1", default=_device_option_value(snapshot, options, "ip-dns1", "")
+                ): str,
+                vol.Optional(
+                    "ip-dns2", default=_device_option_value(snapshot, options, "ip-dns2", "")
+                ): str,
+                vol.Optional(
+                    "update-auto",
+                    default=_coerce_bool(
+                        _device_option_value(snapshot, options, "update-auto", False)
+                    ),
+                ): bool,
+                vol.Optional(
+                    "usage-reporting",
+                    default=_coerce_bool(
+                        _device_option_value(snapshot, options, "usage-reporting", False)
+                    ),
+                ): bool,
+                vol.Optional("transport", default=options.get("transport", "http")): vol.In(
+                    ["http", "mqtt"]
+                ),
+                vol.Optional(
+                    "mqtt_base_topic", default=options.get("mqtt_base_topic", "geyserwala")
+                ): str,
+                vol.Optional(
+                    "calibrations_json", default=options.get("calibrations_json", "")
+                ): str,
                 vol.Optional("alert_rules_json", default=options.get("alert_rules_json", "")): str,
             }
         )
@@ -554,7 +684,9 @@ class GeyserwalaOptionsFlow(config_entries.OptionsFlowWithConfigEntry):
         enable_mqtt = current_options.get("enable_mqtt", False)
         enable_calibration = current_options.get("enable_calibration", False)
         enable_alerts = current_options.get("enable_alerts", False)
-        enable_services = current_options.get("enable_services", True)  # Services enabled by default
+        enable_services = current_options.get(
+            "enable_services", True
+        )  # Services enabled by default
 
         schema = vol.Schema(
             {

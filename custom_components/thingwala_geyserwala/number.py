@@ -22,17 +22,19 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .entity import GeyserwalaEntity
 from .platform_setup import async_setup_platform_entry
 
-NUMBER_SCHEMA = vol.Schema({
-    vol.Required(CONF_NAME): cv.string,
-    vol.Required('key'): cv.string,
-    vol.Optional('device_class', default=None): vol.Any(None, cv.string),
-    vol.Optional('icon', default='mdi:numeric'): cv.string,
-    vol.Optional('visible', default=False): cv.boolean,
-    vol.Optional('entity_category', default=None): vol.Any(None, cv.string),
-    vol.Optional('min', default=0): vol.Coerce(int),
-    vol.Optional('max', default=4294967296): vol.Coerce(int),
-    vol.Optional('unit', default=None): vol.Any(None, cv.string),
-})
+NUMBER_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_NAME): cv.string,
+        vol.Required("key"): cv.string,
+        vol.Optional("device_class", default=None): vol.Any(None, cv.string),
+        vol.Optional("icon", default="mdi:numeric"): cv.string,
+        vol.Optional("visible", default=False): cv.boolean,
+        vol.Optional("entity_category", default=None): vol.Any(None, cv.string),
+        vol.Optional("min", default=0): vol.Coerce(int),
+        vol.Optional("max", default=4294967296): vol.Coerce(int),
+        vol.Optional("unit", default=None): vol.Any(None, cv.string),
+    }
+)
 
 
 @dataclass
@@ -69,7 +71,7 @@ async def async_setup_entry(
         hass=hass,
         config_entry=config_entry,
         async_add_entities=async_add_entities,
-        entity_domain='number',
+        entity_domain="number",
         dc_class=Number,
         entity_class=GeyserwalaNumber,
         description_factory=lambda item: NumberEntityDescription(

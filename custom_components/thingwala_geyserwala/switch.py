@@ -24,14 +24,16 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .entity import GeyserwalaEntity
 from .platform_setup import async_setup_platform_entry
 
-SWITCH_SCHEMA = vol.Schema({
-    vol.Required(CONF_NAME): cv.string,
-    vol.Required('key'): cv.string,
-    vol.Optional('icon_on', default='mdi:toggle-switch'): cv.string,
-    vol.Optional('icon_off', default='mdi:toggle-switch-off'): cv.string,
-    vol.Optional('visible', default=False): cv.boolean,
-    vol.Optional('entity_category', default=None): vol.Any(None, cv.string),
-})
+SWITCH_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_NAME): cv.string,
+        vol.Required("key"): cv.string,
+        vol.Optional("icon_on", default="mdi:toggle-switch"): cv.string,
+        vol.Optional("icon_off", default="mdi:toggle-switch-off"): cv.string,
+        vol.Optional("visible", default=False): cv.boolean,
+        vol.Optional("entity_category", default=None): vol.Any(None, cv.string),
+    }
+)
 
 
 @dataclass
@@ -65,7 +67,7 @@ async def async_setup_entry(
         hass=hass,
         config_entry=config_entry,
         async_add_entities=async_add_entities,
-        entity_domain='switch',
+        entity_domain="switch",
         dc_class=Switch,
         entity_class=GeyserwalaSwitch,
         description_factory=lambda item: SwitchEntityDescription(
@@ -83,6 +85,7 @@ async def async_setup_entry(
 
 class GeyserwalaSwitch(GeyserwalaEntity, SwitchEntity):
     """Geyserwala switch entity."""
+
     def __init__(self, hass, entity_domain, coordinator, description, gw_key, switch_map):
         super().__init__(hass, entity_domain, coordinator, description, gw_key)
         self._switch_map = switch_map

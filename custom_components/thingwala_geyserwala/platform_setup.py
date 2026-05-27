@@ -44,7 +44,9 @@ async def async_setup_platform_entry(
     for item in entity_items:
         description = description_factory(item)
         if item_map is not None:
-            entities.append(entity_class(hass, entity_domain, coordinator, description, item.key, item_map))
+            entities.append(
+                entity_class(hass, entity_domain, coordinator, description, item.key, item_map)
+            )
         else:
             entities.append(entity_class(hass, entity_domain, coordinator, description, item.key))
 

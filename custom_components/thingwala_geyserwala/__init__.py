@@ -36,6 +36,7 @@ except ModuleNotFoundError:  # pragma: no cover - lets local tests import the mo
     class Unauthorized(Exception):
         """Fallback exception used when the external client package is unavailable."""
 
+
 from .alerts import AlertEvaluator, AlertRule
 from .binary_sensor import BINARY_SENSOR_SCHEMA
 from .const import (
@@ -68,12 +69,18 @@ CONFIG_SCHEMA = vol.Schema(
             {
                 vol.Optional("custom_entities"): vol.Schema(
                     {
-                        vol.Optional(Platform.SENSOR.value): vol.All(cv.ensure_list, [SENSOR_SCHEMA]),
+                        vol.Optional(Platform.SENSOR.value): vol.All(
+                            cv.ensure_list, [SENSOR_SCHEMA]
+                        ),
                         vol.Optional(Platform.BINARY_SENSOR.value): vol.All(
                             cv.ensure_list, [BINARY_SENSOR_SCHEMA]
                         ),
-                        vol.Optional(Platform.SWITCH.value): vol.All(cv.ensure_list, [SWITCH_SCHEMA]),
-                        vol.Optional(Platform.NUMBER.value): vol.All(cv.ensure_list, [NUMBER_SCHEMA]),
+                        vol.Optional(Platform.SWITCH.value): vol.All(
+                            cv.ensure_list, [SWITCH_SCHEMA]
+                        ),
+                        vol.Optional(Platform.NUMBER.value): vol.All(
+                            cv.ensure_list, [NUMBER_SCHEMA]
+                        ),
                         vol.Optional(Platform.TEXT.value): vol.All(cv.ensure_list, [TEXT_SCHEMA]),
                     }
                 ),
@@ -198,6 +205,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = DataUpdateCoordinator[Any](
         hass,
         _LOGGER,
+        config_entry=entry,
         name=DOMAIN.title(),
         update_method=lambda: _async_update_status(gwc, entry),
         update_interval=get_update_interval(entry),
@@ -216,7 +224,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Store calibration settings for this entry (only if enabled)
     if enable_calibration:
         calibrations = _parse_calibrations(entry)
-        _LOGGER.debug("[Geyserwala] Calibration feature enabled with %d entity calibrations", len(calibrations))
+        _LOGGER.debug(
+            "[Geyserwala] Calibration feature enabled with %d entity calibrations",
+            len(calibrations),
+        )
     else:
         calibrations = {}
         _LOGGER.debug("[Geyserwala] Calibration feature disabled")

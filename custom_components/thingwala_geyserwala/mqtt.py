@@ -81,9 +81,7 @@ class GeyserwalaClientMQTT:
         _LOGGER.info("[Geyserwala] MQTT client disconnected for device %s", self.device_id)
 
     @callback
-    def _handle_state_update(
-        self, msg: Any
-    ) -> None:
+    def _handle_state_update(self, msg: Any) -> None:
         """Handle MQTT state update message."""
         try:
             payload = msg.payload
@@ -100,9 +98,7 @@ class GeyserwalaClientMQTT:
                 self.device_id,
             )
         except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.error(
-                "[Geyserwala] Error parsing MQTT state update: %s", err
-            )
+            _LOGGER.error("[Geyserwala] Error parsing MQTT state update: %s", err)
 
     async def update(self) -> Any:
         """Fetch latest state (for MQTT, this is cached from subscriptions)."""
@@ -139,9 +135,7 @@ class GeyserwalaClientMQTT:
                 qos=1,
                 retain=False,
             )
-            _LOGGER.debug(
-                "[Geyserwala] Sent set_boost command via MQTT: %s", payload
-            )
+            _LOGGER.debug("[Geyserwala] Sent set_boost command via MQTT: %s", payload)
             return True
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.error("[Geyserwala] Error sending set_boost via MQTT: %s", err)
@@ -161,9 +155,7 @@ class GeyserwalaClientMQTT:
                 qos=1,
                 retain=False,
             )
-            _LOGGER.debug(
-                "[Geyserwala] Sent set_mode command via MQTT: %s", payload
-            )
+            _LOGGER.debug("[Geyserwala] Sent set_mode command via MQTT: %s", payload)
             return True
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.error("[Geyserwala] Error sending set_mode via MQTT: %s", err)
@@ -187,9 +179,7 @@ class GeyserwalaClientMQTT:
             # Return cached error codes from last state update
             return self._data.get("error_codes", [])
         except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.error(
-                "[Geyserwala] Error reading error codes via MQTT: %s", err
-            )
+            _LOGGER.error("[Geyserwala] Error reading error codes via MQTT: %s", err)
             return []
 
     async def clear_error_codes(self) -> bool:
@@ -209,9 +199,7 @@ class GeyserwalaClientMQTT:
             _LOGGER.debug("[Geyserwala] Sent clear_error_codes command via MQTT")
             return True
         except Exception as err:  # pylint: disable=broad-except
-            _LOGGER.error(
-                "[Geyserwala] Error clearing error codes via MQTT: %s", err
-            )
+            _LOGGER.error("[Geyserwala] Error clearing error codes via MQTT: %s", err)
             return False
 
     def __getattr__(self, name: str) -> Any:

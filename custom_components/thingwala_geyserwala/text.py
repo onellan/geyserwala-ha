@@ -61,7 +61,7 @@ async def async_setup_entry(
         hass=hass,
         config_entry=config_entry,
         async_add_entities=async_add_entities,
-        entity_domain='text',
+        entity_domain="text",
         dc_class=Text,
         entity_class=GeyserwalaText,
         description_factory=lambda item: TextEntityDescription(

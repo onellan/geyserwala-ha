@@ -50,17 +50,13 @@ async def async_handle_set_boost(hass: HomeAssistant, call: ServiceCall) -> None
             if hasattr(gwc, "set_boost"):
                 await gwc.set_boost(enabled, duration_minutes)
             else:
-                _LOGGER.warning(
-                    "[Geyserwala] Device does not support set_boost: %s", device_id
-                )
+                _LOGGER.warning("[Geyserwala] Device does not support set_boost: %s", device_id)
         else:
             _LOGGER.debug("[Geyserwala] Disabling boost mode for device %s", device_id)
             if hasattr(gwc, "set_boost"):
                 await gwc.set_boost(False, 0)
             else:
-                _LOGGER.warning(
-                    "[Geyserwala] Device does not support set_boost: %s", device_id
-                )
+                _LOGGER.warning("[Geyserwala] Device does not support set_boost: %s", device_id)
         await coordinator.async_request_refresh()
     except Exception as err:  # pylint: disable=broad-except
         _LOGGER.error("[Geyserwala] Error setting boost mode: %s", err)
@@ -97,9 +93,7 @@ async def async_handle_set_mode(hass: HomeAssistant, call: ServiceCall) -> None:
         if hasattr(gwc, "set_mode"):
             await gwc.set_mode(mode)
         else:
-            _LOGGER.warning(
-                "[Geyserwala] Device does not support set_mode: %s", device_id
-            )
+            _LOGGER.warning("[Geyserwala] Device does not support set_mode: %s", device_id)
         await coordinator.async_request_refresh()
     except Exception as err:  # pylint: disable=broad-except
         _LOGGER.error("[Geyserwala] Error setting mode: %s", err)
@@ -134,13 +128,9 @@ async def async_handle_read_error_codes(hass: HomeAssistant, call: ServiceCall) 
         _LOGGER.debug("[Geyserwala] Reading error codes from device %s", device_id)
         if hasattr(gwc, "read_error_codes"):
             error_codes = await gwc.read_error_codes()
-            _LOGGER.info(
-                "[Geyserwala] Device %s error codes: %s", device_id, error_codes
-            )
+            _LOGGER.info("[Geyserwala] Device %s error codes: %s", device_id, error_codes)
         else:
-            _LOGGER.warning(
-                "[Geyserwala] Device does not support read_error_codes: %s", device_id
-            )
+            _LOGGER.warning("[Geyserwala] Device does not support read_error_codes: %s", device_id)
     except Exception as err:  # pylint: disable=broad-except
         _LOGGER.error("[Geyserwala] Error reading error codes: %s", err)
 
@@ -176,9 +166,7 @@ async def async_handle_clear_error_codes(hass: HomeAssistant, call: ServiceCall)
             await gwc.clear_error_codes()
             _LOGGER.info("[Geyserwala] Error codes cleared for device %s", device_id)
         else:
-            _LOGGER.warning(
-                "[Geyserwala] Device does not support clear_error_codes: %s", device_id
-            )
+            _LOGGER.warning("[Geyserwala] Device does not support clear_error_codes: %s", device_id)
         await coordinator.async_request_refresh()
     except Exception as err:  # pylint: disable=broad-except
         _LOGGER.error("[Geyserwala] Error clearing error codes: %s", err)

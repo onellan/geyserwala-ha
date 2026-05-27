@@ -107,7 +107,7 @@ def _make_flow() -> flow_mod.GeyserwalaOptionsFlow:
         },
     )
     manager = FakeConfigEntriesManager(entry)
-    flow = flow_mod.GeyserwalaOptionsFlow(entry)
+    flow = flow_mod.GeyserwalaOptionsFlow()
     flow.handler = entry.entry_id
     flow.hass = SimpleNamespace(
         data={},

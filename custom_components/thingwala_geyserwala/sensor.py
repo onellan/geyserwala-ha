@@ -22,14 +22,16 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .entity import GeyserwalaEntity
 from .platform_setup import async_setup_platform_entry
 
-SENSOR_SCHEMA = vol.Schema({
-    vol.Required(CONF_NAME): cv.string,
-    vol.Required('key'): cv.string,
-    vol.Optional('device_class', default=None): vol.Any(None, cv.string),
-    vol.Optional('icon', default='mdi:gauge'): cv.string,
-    vol.Optional('visible', default=False): cv.boolean,
-    vol.Optional('unit', default=None): vol.Any(None, cv.string),
-})
+SENSOR_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_NAME): cv.string,
+        vol.Required("key"): cv.string,
+        vol.Optional("device_class", default=None): vol.Any(None, cv.string),
+        vol.Optional("icon", default="mdi:gauge"): cv.string,
+        vol.Optional("visible", default=False): cv.boolean,
+        vol.Optional("unit", default=None): vol.Any(None, cv.string),
+    }
+)
 
 
 @dataclass
@@ -54,7 +56,7 @@ async def async_setup_entry(
         hass=hass,
         config_entry=config_entry,
         async_add_entities=async_add_entities,
-        entity_domain='sensor',
+        entity_domain="sensor",
         dc_class=Sensor,
         entity_class=GeyserwalaSensor,
         description_factory=lambda item: SensorEntityDescription(
